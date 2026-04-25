@@ -1,0 +1,2 @@
+# ibmec_pln
+Aulas de PLN  - SEGUNDA PARTE DO SEMESTRE 2026
