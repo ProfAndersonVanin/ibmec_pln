@@ -1,0 +1,80 @@
+name: pln-curso
+channels:
+  - conda-forge
+  - defaults
+
+# ──────────────────────────────────────────────────────────────
+# ATENÇÃO — USUÁRIOS WINDOWS
+# O PyTorch NÃO está listado aqui intencionalmente.
+# Instale-o via pip APÓS criar o ambiente (evita conflito de DLL):
+#
+#   pip install torch==2.2.0 torchvision==0.17.0 --index-url https://download.pytorch.org/whl/cpu
+#
+# Veja o arquivo LEIA-ME-WINDOWS.txt para o passo a passo completo.
+# ──────────────────────────────────────────────────────────────
+
+dependencies:
+  # ─────────────────────────────────────────
+  # Python
+  # ─────────────────────────────────────────
+  - python=3.10
+
+  # ─────────────────────────────────────────
+  # Jupyter
+  # ─────────────────────────────────────────
+  - jupyter
+  - notebook=7.1.2
+  - ipykernel=6.29.3
+  - ipywidgets=8.1.2
+
+  # ─────────────────────────────────────────
+  # Ciência de Dados (base)
+  # ─────────────────────────────────────────
+  - numpy=1.26.4
+  - pandas=2.2.1
+  - matplotlib=3.8.3
+  - scikit-learn=1.4.1
+  - scipy=1.12.0
+
+  # ─────────────────────────────────────────
+  # pip — bibliotecas PLN e visão
+  # ─────────────────────────────────────────
+  - pip
+  - pip:
+    # ── Aula 1: Representações Conceituais ──
+    - nltk==3.8.1
+    - networkx==3.2.1
+
+    # ── Aula 2: Ferramentas PLN ──
+    - spacy==3.7.4
+    - https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.7.0/pt_core_news_sm-3.7.0-py3-none-any.whl
+    - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+
+    # ── Aula 2: Ferramentas de Visão ──
+    # opencv-python instalado separadamente abaixo (ver nota)
+    - tensorflow==2.15.0
+    - keras==2.15.0
+
+    # ── Aula 4: Modelos Pré-Treinados ──
+    # PyTorch instalado via pip separadamente (ver nota no topo)
+    - transformers==4.38.2
+    - datasets==2.18.0
+    - tokenizers==0.15.2
+    - accelerate==0.27.2
+
+    # ── Aula 5: Aplicações Multimodais ──
+    - Pillow==10.2.0
+    - sentence-transformers==2.6.0
+
+    # ── Aula 6: Aplicações PLN ──
+    - sacrebleu==2.4.0
+    - rouge-score==0.1.2
+    - textblob==0.18.0
+
+    # ── Aula 7: Casos de Uso ──
+    - gradio==4.19.2
+
+    # ── Utilitários ──
+    - tqdm==4.66.2
+    - python-dotenv==1.0.1
+    - requests==2.31.0
