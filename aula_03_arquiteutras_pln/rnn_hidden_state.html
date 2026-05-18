@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hidden State da RNN</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a0f;
+  --surface:#13131a;
+  --surface2:#1c1c27;
+  --border:#2a2a3d;
+  --purple:#7f77dd;
+  --purple-dim:#534ab7;
+  --teal:#1d9e75;
+  --teal-dim:#0f6e56;
+  --amber:#ef9f27;
+  --coral:#d85a30;
+  --text:#e8e6f0;
+  --text-dim:#8884a8;
+  --text-hint:#4a4868;
+  --mono:'DM Mono',monospace;
+  --serif:'Fraunces',serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.7;overflow-x:hidden}
+
+/* ── GRID DOTS BG */
+body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(circle,#2a2a3d 1px,transparent 1px);background-size:32px 32px;opacity:.35;pointer-events:none;z-index:0}
+
+/* ── HERO */
+.hero{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:60px 24px}
+.hero-tag{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--teal);border:1px solid var(--teal-dim);padding:4px 14px;border-radius:2px;margin-bottom:28px;display:inline-block;opacity:0;animation:fadeup .6s .2s forwards}
+.hero h1{font-family:var(--serif);font-size:clamp(36px,7vw,80px);font-weight:300;line-height:1.1;letter-spacing:-.02em;color:var(--text);opacity:0;animation:fadeup .7s .4s forwards}
+.hero h1 em{font-style:italic;color:var(--purple)}
+.hero-sub{margin-top:20px;font-size:13px;color:var(--text-dim);max-width:480px;opacity:0;animation:fadeup .6s .6s forwards}
+.hero-scroll{margin-top:60px;color:var(--text-hint);font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:0;animation:fadeup .5s 1s forwards}
+.scroll-arrow{display:block;margin:8px auto 0;width:1px;height:40px;background:linear-gradient(to bottom,var(--text-hint),transparent);animation:pulse-line 2s 1.5s ease-in-out infinite}
+@keyframes pulse-line{0%,100%{opacity:.3}50%{opacity:.9}}
+
+/* ── SECTIONS */
+section{position:relative;z-index:1;padding:80px 24px;max-width:900px;margin:0 auto}
+.section-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin-bottom:16px}
+.section-title{font-family:var(--serif);font-size:clamp(26px,4vw,44px);font-weight:300;line-height:1.2;margin-bottom:20px}
+.section-title em{font-style:italic;color:var(--purple)}
+.section-body{font-size:13px;color:var(--text-dim);line-height:1.9;max-width:600px}
+
+/* ── FORMULA BOX */
+.formula-box{margin:32px 0;padding:24px 28px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:4px}
+.formula-main{font-size:15px;letter-spacing:.02em;color:var(--text)}
+.formula-main .ht{color:var(--amber)}
+.formula-main .wt{color:var(--teal)}
+.formula-main .xt{color:var(--purple)}
+.formula-main .dim{color:var(--text-hint)}
+.formula-legend{margin-top:16px;display:flex;flex-wrap:wrap;gap:16px}
+.formula-legend span{font-size:11px;color:var(--text-dim)}
+.formula-legend strong{color:var(--amber)}
+.formula-legend strong.w{color:var(--teal)}
+.formula-legend strong.x{color:var(--purple)}
+
+/* ── RNN ANIMATION */
+.rnn-demo{margin:40px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.rnn-controls{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rnn-controls .label{font-size:11px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase}
+.token-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);padding:6px 14px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:13px;transition:all .2s}
+.token-btn:hover{border-color:var(--purple-dim);color:var(--text)}
+.token-btn.active{background:var(--purple-dim);border-color:var(--purple);color:#e8e4ff}
+.auto-btn{margin-left:auto;background:transparent;border:1px solid var(--teal-dim);color:var(--teal);padding:6px 14px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;transition:all .2s}
+.auto-btn:hover{background:var(--teal-dim);color:#d0f5ea}
+.rnn-body{display:grid;grid-template-columns:1fr 1fr;gap:0}
+@media(max-width:600px){.rnn-body{grid-template-columns:1fr}}
+.rnn-panel{padding:24px}
+.rnn-panel + .rnn-panel{border-left:1px solid var(--border)}
+.panel-title{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-hint);margin-bottom:16px}
+
+/* ── HIDDEN STATE BARS */
+.dim-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.dim-label{font-size:10px;color:var(--text-dim);width:72px;flex-shrink:0;text-align:right}
+.bar-track{flex:1;height:10px;background:var(--surface2);border-radius:2px;position:relative;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .5s cubic-bezier(.4,0,.2,1),background .5s;min-width:0}
+.bar-fill.pos{background:var(--teal)}
+.bar-fill.neg{background:var(--coral)}
+.bar-val{font-size:10px;color:var(--text-dim);width:38px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ── HISTORY */
+.hist-item{padding:10px 12px;border-radius:4px;border:1px solid var(--border);margin-bottom:6px;transition:all .3s;cursor:default}
+.hist-item.current{border-color:var(--amber);background:rgba(239,159,39,.07)}
+.hist-word{font-size:12px;font-weight:500;color:var(--text);margin-bottom:6px}
+.hist-mini{display:flex;gap:2px;height:8px}
+.hist-mini-bar{flex:1;border-radius:1px;transition:background .4s}
+
+/* ── INFO CARD */
+.info-card{padding:16px 20px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);margin-top:0}
+.info-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px}
+.info-body{font-size:12px;color:var(--text-dim);line-height:1.7}
+
+/* ── STEP SECTION */
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:32px 0}
+.step-card{padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:6px;transition:border-color .3s}
+.step-card:hover{border-color:var(--purple-dim)}
+.step-num{font-size:10px;color:var(--purple);letter-spacing:.15em;text-transform:uppercase;margin-bottom:10px}
+.step-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px}
+.step-body{font-size:12px;color:var(--text-dim);line-height:1.7}
+.step-formula{font-size:11px;color:var(--text-hint);margin-top:10px;padding:8px 10px;background:var(--surface2);border-radius:4px;border-left:2px solid var(--purple-dim)}
+
+/* ── PROBLEM SECTION */
+.memory-viz{margin:32px 0;padding:24px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.memory-tokens{display:flex;gap:0;margin-bottom:24px;overflow-x:auto}
+.mem-token{flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:0 12px}
+.mem-word{font-size:12px;padding:7px 12px;border-radius:4px;white-space:nowrap;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);margin-bottom:8px}
+.mem-arrow{width:1px;height:24px;margin:0 auto}
+.mem-influence{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;transition:all .5s}
+.mem-label{font-size:9px;color:var(--text-hint);margin-top:6px;text-align:center}
+.mem-final{font-size:12px;color:var(--text-dim);margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* ── COMPARISON */
+.comparison{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:28px 0}
+@media(max-width:560px){.comparison{grid-template-columns:1fr}}
+.cmp-card{padding:20px;border-radius:6px;border:1px solid var(--border)}
+.cmp-card.rnn{border-left:3px solid var(--coral)}
+.cmp-card.lstm{border-left:3px solid var(--teal)}
+.cmp-title{font-size:13px;font-weight:500;margin-bottom:8px}
+.cmp-card.rnn .cmp-title{color:var(--coral)}
+.cmp-card.lstm .cmp-title{color:var(--teal)}
+.cmp-body{font-size:12px;color:var(--text-dim);line-height:1.7}
+
+/* ── FOOTER */
+footer{text-align:center;padding:60px 24px;color:var(--text-hint);font-size:11px;letter-spacing:.08em;position:relative;z-index:1}
+
+/* ── DIVIDER */
+.divider{height:1px;background:var(--border);max-width:900px;margin:0 auto;opacity:.5}
+
+/* ── ANIMATIONS */
+@keyframes fadeup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ── SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-tag">RNN · Aula 3 · PLN</div>
+  <h1>Hidden State<br><em>da RNN</em></h1>
+  <p class="hero-sub">Como a memória de uma rede neural recorrente se transforma a cada palavra lida — passo a passo, dimensão por dimensão.</p>
+  <div class="hero-scroll">
+    role para explorar
+    <span class="scroll-arrow"></span>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- O QUE É -->
+<section class="reveal">
+  <div class="section-label">Conceito fundamental</div>
+  <h2 class="section-title">O que é o <em>hidden state?</em></h2>
+  <p class="section-body">O hidden state (hₜ) é um vetor de números que a RNN carrega de uma palavra para a próxima. Funciona como um bloco de notas que a rede atualiza a cada passo, misturando a palavra atual com tudo que foi lido antes.</p>
+
+  <div class="formula-box">
+    <div class="formula-main">
+      <span class="ht">h</span><sub>t</sub>
+      <span class="dim"> = tanh( </span>
+      <span class="wt">W</span>
+      <span class="dim"> × </span>
+      <span class="xt">x</span><sub>t</sub>
+      <span class="dim">  +  U × </span>
+      <span class="ht">h</span><sub>t-1</sub>
+      <span class="dim">  +  b )</span>
+    </div>
+    <div class="formula-legend">
+      <span><strong>hₜ</strong> = novo hidden state (memória atualizada)</span>
+      <span><strong class="x">xₜ</strong> = palavra atual (embedding)</span>
+      <span><strong class="w">W</strong> = pesos da palavra</span>
+      <span><strong>U</strong> = pesos da memória</span>
+      <span><strong>tanh</strong> = mantém valores entre −1 e +1</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- DEMO INTERATIVA -->
+<section class="reveal">
+  <div class="section-label">Demonstração interativa</div>
+  <h2 class="section-title">Clique em cada palavra</h2>
+
+  <div class="rnn-demo">
+    <div class="rnn-controls">
+      <span class="label">Frase:</span>
+      <button class="token-btn active" onclick="setStep(-1)">[início]</button>
+      <button class="token-btn" onclick="setStep(0)">O</button>
+      <button class="token-btn" onclick="setStep(1)">gato</button>
+      <button class="token-btn" onclick="setStep(2)">preto</button>
+      <button class="token-btn" onclick="setStep(3)">dormiu</button>
+      <button class="token-btn" onclick="setStep(4)">no</button>
+      <button class="token-btn" onclick="setStep(5)">sofá</button>
+      <button class="auto-btn" id="autoBtn" onclick="toggleAuto()">▶ Animar</button>
+    </div>
+    <div class="rnn-body">
+      <div class="rnn-panel">
+        <div class="panel-title">Hidden state atual — <span id="step-lbl">h₀ (início)</span></div>
+        <div id="dims-container"></div>
+        <div class="info-card" style="margin-top:16px">
+          <div class="info-title" id="info-title">Estado inicial</div>
+          <div class="info-body" id="info-body">O hidden state começa zerado. A RNN não tem nenhuma memória ainda — como uma folha em branco antes da leitura.</div>
+        </div>
+      </div>
+      <div class="rnn-panel">
+        <div class="panel-title">Memória acumulada</div>
+        <div id="hist-container"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PASSOS -->
+<section class="reveal">
+  <div class="section-label">Como acontece</div>
+  <h2 class="section-title">Os quatro <em>passos</em> a cada palavra</h2>
+
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-num">Passo 01</div>
+      <div class="step-title">Embedding</div>
+      <div class="step-body">A palavra é convertida em um vetor numérico — o embedding. "gato" vira [0.7, -0.2, 0.5, ...]</div>
+      <div class="step-formula">xₜ = W_embed[id_palavra]</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">Passo 02</div>
+      <div class="step-title">Contribuição da palavra</div>
+      <div class="step-body">O embedding é multiplicado pela matriz de pesos W, gerando a influência da palavra atual.</div>
+      <div class="step-formula">contrib_x = W × xₜ</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">Passo 03</div>
+      <div class="step-title">Contribuição da memória</div>
+      <div class="step-body">O hidden state anterior é multiplicado pela matriz U — a "memória" influencia o novo estado.</div>
+      <div class="step-formula">contrib_h = U × hₜ₋₁</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">Passo 04</div>
+      <div class="step-title">Combinação + tanh</div>
+      <div class="step-body">As duas contribuições são somadas e passadas pela função tanh, que comprime tudo entre −1 e +1.</div>
+      <div class="step-formula">hₜ = tanh(contrib_x + contrib_h + b)</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PROBLEMA DO ESQUECIMENTO -->
+<section class="reveal">
+  <div class="section-label">Limitação da RNN</div>
+  <h2 class="section-title">O problema do <em>esquecimento</em></h2>
+  <p class="section-body">Quanto mais longa a frase, mais a RNN "esquece" o que aconteceu no início. A influência das primeiras palavras se dilui a cada novo passo — isso é o vanishing gradient.</p>
+
+  <div class="memory-viz">
+    <div class="panel-title" style="margin-bottom:16px">Influência de cada palavra no hidden state final</div>
+    <div class="memory-tokens" id="memTokens"></div>
+    <div class="mem-final">
+      <span style="color:var(--text-hint)">Tamanho do círculo = influência restante no estado final.</span>
+      <span style="color:var(--coral);margin-left:12px">Vermelho = quase esquecida.</span>
+      <span style="color:var(--teal);margin-left:12px">Verde = ainda influente.</span>
+    </div>
+  </div>
+
+  <div class="comparison">
+    <div class="cmp-card rnn">
+      <div class="cmp-title">RNN simples</div>
+      <div class="cmp-body">Uma memória só. Cada novo passo sobrescreve parte da memória anterior. Em frases longas, o início é progressivamente perdido.</div>
+    </div>
+    <div class="cmp-card lstm">
+      <div class="cmp-title">LSTM (solução)</div>
+      <div class="cmp-body">Duas memórias: cell state (longo prazo) + hidden state (curto prazo). Três portões controlam o que manter, o que esquecer e o que usar.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- TAKEAWAYS -->
+<section class="reveal">
+  <div class="section-label">Resumo</div>
+  <h2 class="section-title">O que aprendemos</h2>
+
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-num">Conceito</div>
+      <div class="step-title">hₜ = memória viva</div>
+      <div class="step-body">O hidden state não é fixo — ele muda a cada palavra, acumulando contexto ao longo da sequência.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">Mecanismo</div>
+      <div class="step-title">Mistura dupla</div>
+      <div class="step-body">Cada novo estado mistura a palavra atual (xₜ) com a memória anterior (hₜ₋₁) através de matrizes de pesos aprendidas.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">Limitação</div>
+      <div class="step-title">Esquecimento gradual</div>
+      <div class="step-body">A influência de palavras distantes decai. Frases longas são problemáticas — motivando a criação da LSTM em 1997.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">Prático</div>
+      <div class="step-title">return_sequences</div>
+      <div class="step-body">No Keras, <code style="color:var(--purple)">return_sequences=True</code> retorna todos os hidden states — não só o final — para inspecionar cada passo.</div>
+    </div>
+  </div>
+</section>
+
+<footer>Aula 3 — Arquiteturas para PLN &nbsp;·&nbsp; Curso de Processamento de Linguagem Natural</footer>
+
+<script>
+const STEPS = [
+  {
+    label: 'h₀ (início)',
+    title: 'Estado inicial',
+    body: 'O hidden state começa zerado — a RNN não tem nenhuma memória. Cada dimensão vale 0.00. É a folha em branco antes da leitura.',
+    dims: [0, 0, 0, 0, 0, 0]
+  },
+  {
+    label: 'h₁ — "O"',
+    title: '"O" — artigo definido',
+    body: 'A RNN lê o artigo "O". Por ser uma palavra gramatical de baixo conteúdo semântico, o hidden state muda pouco. A memória começa a existir, mas é fraca.',
+    dims: [0.18, -0.09, 0.12, 0.04, -0.08, 0.07]
+  },
+  {
+    label: 'h₂ — "gato"',
+    title: '"gato" — sujeito da frase',
+    body: 'Grande atualização! "gato" é o sujeito — a informação mais importante até aqui. As dimensões de agente e semântica saltam. A memória agora "sabe" quem é o personagem.',
+    dims: [0.72, -0.51, 0.63, 0.29, -0.42, 0.54]
+  },
+  {
+    label: 'h₃ — "preto"',
+    title: '"preto" — adjetivo modificador',
+    body: 'O adjetivo "preto" modifica o sujeito. O hidden state incorpora essa informação ao vetor de "gato" — agora a memória representa "gato preto" como conceito único.',
+    dims: [0.80, -0.60, 0.42, 0.51, -0.31, 0.63]
+  },
+  {
+    label: 'h₄ — "dormiu"',
+    title: '"dormiu" — verbo principal',
+    body: 'O verbo é a ação principal. A RNN conecta "dormiu" ao sujeito "gato" já na memória. As dimensões de ação ficam com valores altos. A frase começa a ter sentido completo.',
+    dims: [0.58, -0.78, 0.69, 0.41, -0.68, 0.32]
+  },
+  {
+    label: 'h₅ — "no"',
+    title: '"no" — preposição de lugar',
+    body: 'A preposição "no" prepara o hidden state para receber uma informação de localização. A dimensão de localização cresce — a RNN "espera" um lugar no próximo passo.',
+    dims: [0.49, -0.68, 0.51, 0.62, -0.58, 0.41]
+  },
+  {
+    label: 'h₆ — "sofá" (final)',
+    title: '"sofá" — frase completa!',
+    body: 'O hidden state final contém toda a informação da frase: quem (gato preto) + ação (dormiu) + onde (sofá). Este vetor é usado para classificar, gerar ou traduzir.',
+    dims: [0.42, -0.63, 0.57, 0.71, -0.50, 0.82]
+  }
+];
+
+const DIM_LABELS = ['Agente', 'Polaridade', 'Semântica', 'Localiz.', 'Negação', 'Ação'];
+const WORD_LABELS = ['início', 'O', 'gato', 'preto', 'dormiu', 'no', 'sofá'];
+
+let currentStep = -1;
+let history = [];
+let autoInterval = null;
+let autoRunning = false;
+
+function renderDims(dims) {
+  const c = document.getElementById('dims-container');
+  c.innerHTML = '';
+  dims.forEach((v, i) => {
+    const isPos = v >= 0;
+    const pct = Math.round(Math.abs(v) * 100);
+    const row = document.createElement('div');
+    row.className = 'dim-row';
+    row.innerHTML = `
+      <div class="dim-label">${DIM_LABELS[i]}</div>
+      <div class="bar-track">
+        <div class="bar-fill ${isPos ? 'pos' : 'neg'}" style="width:${pct / 2}%;${isPos ? 'margin-left:50%' : 'margin-left:' + (50 - pct / 2) + '%'}"></div>
+        <div style="position:absolute;left:50%;top:0;bottom:0;width:0.5px;background:rgba(255,255,255,.06)"></div>
+      </div>
+      <div class="bar-val">${v.toFixed(2)}</div>`;
+    c.appendChild(row);
+  });
+}
+
+function renderHist() {
+  const c = document.getElementById('hist-container');
+  c.innerHTML = '';
+  const show = history.slice(-6);
+  show.forEach((h, i) => {
+    const isCur = i === show.length - 1;
+    const item = document.createElement('div');
+    item.className = 'hist-item' + (isCur ? ' current' : '');
+    const mini = h.dims.map(v => {
+      const pct = Math.round(Math.abs(v) * 100);
+      const col = v >= 0 ? '#1d9e75' : '#d85a30';
+      return `<div class="hist-mini-bar" style="background:${pct > 8 ? col : '#2a2a3d'}"></div>`;
+    }).join('');
+    item.innerHTML = `<div class="hist-word">${h.label}</div><div class="hist-mini">${mini}</div>`;
+    c.appendChild(item);
+  });
+}
+
+function setStep(s) {
+  currentStep = s;
+  const idx = s + 1;
+  const data = STEPS[idx];
+
+  document.querySelectorAll('.token-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i - 1 === s);
+  });
+
+  document.getElementById('step-lbl').textContent = data.label;
+  document.getElementById('info-title').textContent = data.title;
+  document.getElementById('info-body').textContent = data.body;
+
+  if (s === -1) {
+    history = [{ label: 'h₀ início', dims: [...data.dims] }];
+  } else {
+    const already = history.find(h => h.label === data.label);
+    if (!already) history.push({ label: data.label, dims: [...data.dims] });
+  }
+
+  renderDims(data.dims);
+  renderHist();
+}
+
+function toggleAuto() {
+  autoRunning = !autoRunning;
+  const btn = document.getElementById('autoBtn');
+  if (autoRunning) {
+    btn.textContent = '■ Parar';
+    history = [];
+    setStep(-1);
+    let step = -1;
+    autoInterval = setInterval(() => {
+      step++;
+      if (step > 5) { clearInterval(autoInterval); autoRunning = false; btn.textContent = '▶ Animar'; return; }
+      setStep(step);
+    }, 1200);
+  } else {
+    clearInterval(autoInterval);
+    btn.textContent = '▶ Animar';
+  }
+}
+
+function buildMemoryViz() {
+  const words = ['O', 'gato', 'preto', 'dormiu', 'no', 'sofá'];
+  const influences = [0.08, 0.31, 0.22, 0.78, 0.45, 0.95];
+  const c = document.getElementById('memTokens');
+  words.forEach((w, i) => {
+    const inf = influences[i];
+    const r = Math.round(8 + inf * 26);
+    const col = inf > 0.5
+      ? `rgb(${Math.round(29 + (1 - inf) * 50)}, ${Math.round(100 + inf * 58)}, ${Math.round(80 + inf * 37)})`
+      : `rgb(${Math.round(150 + inf * 66)}, ${Math.round(50 + inf * 40)}, ${Math.round(20 + inf * 28)})`;
+    const item = document.createElement('div');
+    item.className = 'mem-token';
+    item.innerHTML = `
+      <div class="mem-word">${w}</div>
+      <div class="mem-arrow" style="background:linear-gradient(to bottom,#2a2a3d,transparent)"></div>
+      <div class="mem-influence" style="width:${r * 2}px;height:${r * 2}px;background:${col}22;border:1.5px solid ${col}">
+        <span style="font-size:9px;color:${col}">${Math.round(inf * 100)}%</span>
+      </div>
+      <div class="mem-label">pos ${i + 1}</div>`;
+    c.appendChild(item);
+  });
+}
+
+function initReveal() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+}
+
+setStep(-1);
+buildMemoryViz();
+initReveal();
+</script>
+</body>
+</html>
