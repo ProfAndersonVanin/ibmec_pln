@@ -1,0 +1,273 @@
+================================================================
+CURSO DE PLN — AULA 5
+Aplicações Multimodais: Texto + Imagem
+================================================================
+
+------------------------------------------------------------------
+1. O QUE É MULTIMODAL?
+------------------------------------------------------------------
+
+Modelos multimodais processam mais de um tipo de dado ao mesmo
+tempo. O mais comum em PLN é a combinação texto + imagem.
+
+Exemplos do cotidiano:
+  Você abre um cardápio de restaurante:
+  → Vê a FOTO do prato       (imagem)
+  → Lê o NOME e descrição    (texto)
+  → Vê o PREÇO               (número)
+  → Ouve a recomendação      (fala)
+
+  Um app de acessibilidade para cegos:
+  → Recebe FOTO da câmera    (imagem)
+  → Gera DESCRIÇÃO em voz   (texto → áudio)
+
+  O Google Imagens:
+  → Você digita TEXTO        (texto)
+  → Retorna IMAGENS          (imagem)
+
+Aplicações práticas de modelos texto + imagem:
+  - Legendas automáticas (Instagram, redes sociais)
+  - Busca por imagem usando texto (Google Imagens)
+  - Acessibilidade para deficientes visuais
+  - Moderação de conteúdo impróprio
+  - Diagnóstico médico por imagem + laudo textual
+  - Chatbots com câmera (GPT-4V, Claude)
+
+
+------------------------------------------------------------------
+2. PRÉ-PROCESSAMENTO DE IMAGENS COM OPENCV
+------------------------------------------------------------------
+
+Antes de enviar uma imagem para um modelo de PLN,
+é necessário prepará-la. O OpenCV é a principal ferramenta.
+
+Formato BGR vs RGB:
+  OpenCV lê imagens em BGR (Blue, Green, Red).
+  A maioria dos modelos de DL espera RGB (Red, Green, Blue).
+  Se não converter, as cores ficam erradas!
+
+  Pixel vermelho:
+    BGR: (0, 0, 255)    ← OpenCV
+    RGB: (255, 0, 0)    ← o que os modelos esperam
+
+Conversão BGR → RGB:
+  img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+
+Redimensionamento:
+  Modelos têm um tamanho de entrada fixo (ex: 224×224).
+  img_224 = cv2.resize(img_rgb, (224, 224))
+
+Normalização:
+  Pixels têm valores inteiros de 0 a 255.
+  Modelos de deep learning trabalham com float de 0.0 a 1.0.
+  img_norm = img_224.astype(np.float32) / 255.0
+
+Conversão para PIL (necessário para BLIP e CLIP):
+  from PIL import Image
+  img_pil = Image.fromarray(img_rgb)
+
+Pipeline completo de pré-processamento:
+  def preprocessar(img_bgr, tamanho=(224, 224)):
+      img_rgb  = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+      img_res  = cv2.resize(img_rgb, tamanho)
+      img_norm = img_res.astype(np.float32) / 255.0
+      img_pil  = Image.fromarray(img_res)
+      return img_norm, img_pil
+
+Análise de características básicas com OpenCV:
+  Brilho médio:
+    cinza  = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    brilho = cinza.mean()  # 0=preto, 255=branco
+    # imagem de dia → brilho alto (~150)
+    # imagem de noite → brilho baixo (~30)
+
+  Detecção de bordas (Canny):
+    bordas = cv2.Canny(cinza, 50, 150)
+    n_bordas = (bordas > 0).sum()
+    # imagem complexa → muitas bordas
+    # imagem simples → poucas bordas
+
+
+------------------------------------------------------------------
+3. IMAGE CAPTIONING COM BLIP
+------------------------------------------------------------------
+
+Image Captioning é a tarefa de gerar automaticamente uma
+descrição textual de uma imagem.
+
+  Entrada: [foto de uma casa com sol e árvore]
+  Saída:   "A house with a sunny sky and a tree in the yard"
+
+Modelo BLIP:
+  BLIP = Bootstrapping Language-Image Pre-training
+  Desenvolvido pela Salesforce em 2022.
+  Combina um Encoder de imagem (Vision Transformer) com
+  um Decoder de texto (BERT/GPT).
+
+Uso via Hugging Face:
+  from transformers import pipeline
+  from PIL import Image
+
+  captioner = pipeline(
+      'image-to-text',
+      model='Salesforce/blip-image-captioning-base'
+  )
+
+  img_pil = Image.open('foto.jpg')
+  resultado = captioner(img_pil, max_new_tokens=50)
+  descricao = resultado[0]['generated_text']
+  print(f"Descrição: {descricao}")
+
+Importância da conversão:
+  O BLIP espera imagem PIL em RGB.
+  Se você tiver imagem OpenCV (BGR), converta antes:
+    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    img_pil = Image.fromarray(img_rgb)
+
+
+------------------------------------------------------------------
+4. VISUAL QUESTION ANSWERING (VQA)
+------------------------------------------------------------------
+
+VQA vai além do captioning: você faz uma pergunta específica
+sobre a imagem e o modelo responde baseado no que vê.
+
+  Entrada: [foto de sala] + "What color is the sofa?"
+  Saída:   "blue"
+
+  Entrada: [foto de rua] + "How many cars are there?"
+  Saída:   "3"
+
+  Entrada: [foto de céu] + "Is it going to rain?"
+  Saída:   "no"
+
+O mesmo modelo BLIP suporta VQA:
+  vqa = pipeline(
+      'visual-question-answering',
+      model='Salesforce/blip-vqa-base'
+  )
+
+  resposta = vqa(
+      image=img_pil,
+      question="Is it daytime or nighttime?",
+      top_k=1
+  )
+  print(resposta[0]['answer'])    # ex: "daytime"
+  print(resposta[0]['score'])     # ex: 0.87
+
+Diferença entre Captioning e VQA:
+  Captioning: descreve TUDO que está na imagem
+  VQA:        responde uma pergunta ESPECÍFICA sobre a imagem
+
+  Captioning → "A house with a tree and a sunny sky"
+  VQA → Pergunta: "Is there a tree?" → Resposta: "yes"
+
+
+------------------------------------------------------------------
+5. CLASSIFICAÇÃO ZERO-SHOT COM CLIP
+------------------------------------------------------------------
+
+CLIP = Contrastive Language-Image Pre-training (OpenAI, 2021)
+
+O CLIP é treinado para aprender que imagens e suas descrições
+textuais devem ter representações vetoriais PRÓXIMAS.
+
+  [foto de cachorro] ↔ "a photo of a dog"   → vetores próximos
+  [foto de cachorro] ↔ "a photo of a cat"   → vetores distantes
+
+Zero-shot classification:
+  Você define as categorias NA HORA, sem treinar nada.
+  O CLIP compara o embedding da imagem com os embeddings
+  de cada categoria e retorna a mais próxima.
+
+  Categorias definidas pelo usuário:
+  ['cachorro', 'gato', 'pássaro', 'peixe']
+
+  → O CLIP nunca foi treinado especificamente para essas
+    categorias, mas funciona porque aprendeu as relações
+    entre imagens e texto em escala!
+
+Uso via Hugging Face:
+  classificador = pipeline(
+      'zero-shot-image-classification',
+      model='openai/clip-vit-base-patch32'
+  )
+
+  resultados = classificador(
+      img_pil,
+      candidate_labels=['daytime', 'nighttime', 'sunset']
+  )
+
+  for r in resultados:
+      print(f"{r['label']}: {r['score']:.0%}")
+  # daytime:   87%
+  # sunset:    10%
+  # nighttime:  3%
+
+Vantagem do CLIP:
+  Não precisa de dataset rotulado para suas categorias.
+  As categorias podem ser em qualquer idioma (funciona melhor
+  em inglês porque foi treinado principalmente em inglês).
+
+
+------------------------------------------------------------------
+6. PIPELINE MULTIMODAL COMPLETO
+------------------------------------------------------------------
+
+Combinando todos os componentes em um único sistema:
+
+  def analisar_imagem_completa(img_bgr):
+      # 1. Pré-processar
+      img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+      img_pil = Image.fromarray(img_rgb)
+
+      # 2. Análise visual básica (OpenCV)
+      cinza  = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+      brilho = cinza.mean()
+      periodo = 'dia' if brilho > 60 else 'noite'
+
+      # 3. Gerar descrição (BLIP captioning)
+      descricao = captioner(img_pil)[0]['generated_text']
+
+      # 4. Responder perguntas (BLIP VQA)
+      resposta = vqa(img_pil, "Is there a building?")[0]
+
+      # 5. Classificar (CLIP zero-shot)
+      cats    = ['outdoor', 'indoor', 'natural', 'urban']
+      clip_r  = classificador(img_pil, candidate_labels=cats)
+      categoria = clip_r[0]['label']
+
+      return {
+          'periodo': periodo,
+          'descricao': descricao,
+          'tem_edificio': resposta['answer'],
+          'categoria': categoria
+      }
+
+Fluxo do pipeline:
+  Imagem → OpenCV (pré-processar)
+         → BLIP (descrever)
+         → BLIP (responder perguntas)
+         → CLIP (classificar)
+         → Relatório completo
+
+
+------------------------------------------------------------------
+7. RESUMO DAS TAREFAS MULTIMODAIS
+------------------------------------------------------------------
+
+  Tarefa                | Modelo                      | Entrada
+  ----------------------|-----------------------------|----------
+  Pré-processamento     | OpenCV                      | Imagem
+  Image Captioning      | Salesforce/blip-captioning  | Imagem
+  Visual QA             | Salesforce/blip-vqa         | Img + Texto
+  Zero-shot classificação| openai/clip-vit-base       | Img + Categorias
+
+  Todos os modelos esperam imagem PIL em RGB!
+  Converter com: Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+
+
+------------------------------------------------------------------
+FIM DA AULA 5
+Próxima aula: Aplicações de PLN (Tradução, Sumarização, Sentimento)
+------------------------------------------------------------------

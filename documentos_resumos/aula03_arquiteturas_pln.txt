@@ -1,0 +1,276 @@
+================================================================
+CURSO DE PLN — AULA 3
+Arquiteturas para PLN: RNN, LSTM, GRU e Transformer
+================================================================
+
+------------------------------------------------------------------
+1. POR QUE ARQUITETURAS ESPECIAIS PARA TEXTO?
+------------------------------------------------------------------
+
+O texto tem características únicas que exigem arquiteturas
+neurais específicas. A ordem das palavras importa:
+
+  "O cachorro mordeu o homem" → sentido A
+  "O homem mordeu o cachorro" → sentido B (mesmas palavras!)
+
+Além disso, para entender uma palavra, precisamos das anteriores:
+  "Maria comprou um livro. Ela gostou muito dele."
+  → "Ela" e "dele" só fazem sentido se lembramos de "Maria"
+    e "livro" das frases anteriores.
+
+Redes neurais densas (Dense) não têm memória — cada entrada
+é tratada de forma independente. Por isso foram criadas as
+arquiteturas recorrentes e de atenção.
+
+Linha do tempo:
+  1986 → RNN simples (primeira rede com memória)
+  1997 → LSTM (resolve o esquecimento da RNN)
+  2014 → GRU (versão compacta da LSTM)
+  2017 → Transformer (atenção sem recorrência)
+  2018 → BERT, GPT (Transformer pré-treinado)
+
+
+------------------------------------------------------------------
+2. RNN — REDE NEURAL RECORRENTE
+------------------------------------------------------------------
+
+A RNN processa texto palavra por palavra, mantendo um
+"hidden state" (estado oculto) que funciona como memória.
+
+Como funciona:
+  Passo 1: lê a palavra "O"     → cria h₁ (pequena mudança)
+  Passo 2: lê "gato"            → cria h₂ (grava o sujeito)
+  Passo 3: lê "preto"           → cria h₃ (adiciona adjetivo)
+  Passo 4: lê "dormiu"          → cria h₄ (registra a ação)
+  Passo 5: lê "no"              → cria h₅ (prepara local)
+  Passo 6: lê "sofá"            → cria h₆ (frase completa!)
+
+A fórmula matemática de cada passo:
+  hₜ = tanh( W × xₜ  +  U × hₜ₋₁  +  b )
+       ────────────────────────────────────
+       Combina a palavra atual (xₜ) com a
+       memória anterior (hₜ₋₁) usando pesos
+       aprendidos (W, U) e um bias (b).
+
+  tanh → mantém valores entre -1 e +1 (estabilidade numérica)
+
+O hidden state final h₆ resume toda a frase e é usado para
+tarefas como classificação de sentimento.
+
+Implementação com Keras:
+  keras.layers.SimpleRNN(
+      units=16,             # tamanho do hidden state
+      return_sequences=True # True = retorna todos os estados
+  )                         # False = retorna só o último
+
+PROBLEMA — Vanishing Gradient:
+  Em frases longas, o sinal de aprendizado (gradiente) fica
+  tão pequeno ao se propagar pelos muitos passos que
+  praticamente desaparece. A RNN "esquece" o início da frase.
+
+  "Maria, que nasceu em 1990 e estudou medicina na USP
+   durante 6 anos, ___ se tornou uma excelente médica."
+  
+  Quando chega no final, a RNN mal lembra que o sujeito
+  é "Maria" — a informação foi diluída pelos passos.
+
+
+------------------------------------------------------------------
+3. LSTM — LONG SHORT-TERM MEMORY
+------------------------------------------------------------------
+
+A LSTM foi criada por Hochreiter e Schmidhuber em 1997
+especificamente para resolver o problema do vanishing gradient.
+
+Inovação: duas memórias em vez de uma
+  Hidden state (h): memória de curto prazo (o que uso agora)
+  Cell state (c):   memória de longo prazo (o que guardo)
+
+Metáfora da mochila:
+  Imagine que você lê um livro com uma mochila.
+  RNN: tem um bloco de notas que apaga e reescreve a cada página.
+  LSTM: tem a mochila com dois compartimentos:
+    → Caderno especial que preserva informações importantes
+    → Post-it com o que está usando agora
+    → Três fechos controlando o que entra, sai e é guardado
+
+Os três portões da LSTM:
+  1. FORGET GATE (porta do esquecimento):
+     Decide quais informações do cell state apagar.
+     "Após ler 'cachorro', posso esquecer que o sujeito era 'gato'"
+
+  2. INPUT GATE (porta de entrada):
+     Decide quais novas informações guardar no cell state.
+     "Devo lembrar que agora o sujeito é 'cachorro'"
+
+  3. OUTPUT GATE (porta de saída):
+     Decide o que do cell state usar no hidden state atual.
+     "Preciso do sujeito agora para processar o verbo"
+
+Cada portão é uma pequena rede neural com ativação sigmoid
+(saída entre 0 e 1):
+  0 → fechar o portão (bloquear)
+  1 → abrir o portão (deixar passar)
+
+Implementação com Keras:
+  keras.layers.LSTM(
+      units=16,
+      return_sequences=False
+  )
+
+LSTM Bidirecional:
+  Lê o texto em AMBAS as direções simultaneamente.
+  → Leitura →  "O banco sacar dinheiro"
+  ← Leitura ←  "dinheiro sacar banco O"
+  
+  Ao processar "banco", já conhece "sacar" e "dinheiro" (frente)
+  e "O" (trás). Muito melhor para desambiguação!
+
+  keras.layers.Bidirectional(
+      keras.layers.LSTM(16)
+  )
+
+
+------------------------------------------------------------------
+4. GRU — GATED RECURRENT UNIT
+------------------------------------------------------------------
+
+A GRU foi proposta por Cho et al. em 2014 como uma alternativa
+mais simples e rápida à LSTM.
+
+Diferença principal em relação à LSTM:
+  LSTM: 3 portões + cell state separado = mais parâmetros
+  GRU:  2 portões + sem cell state separado = mais rápida
+
+Portões da GRU:
+  1. RESET GATE: quanto da memória anterior "resetar"
+  2. UPDATE GATE: quanto da nova informação incorporar
+
+Quando usar LSTM vs GRU:
+  Dataset pequeno / treino rápido → GRU (menos parâmetros)
+  Dataset grande / máxima performance → LSTM
+  Contexto bidirecional importante → BiLSTM
+  Dataset enorme / estado da arte → Transformer
+
+Implementação com Keras:
+  keras.layers.GRU(units=16)
+  # Mesma interface que LSTM — fácil de substituir!
+
+Comparativo de parâmetros (exemplo com hidden_size=16):
+  SimpleRNN: ~300 parâmetros
+  GRU:       ~900 parâmetros  (3× mais que RNN)
+  LSTM:     ~1200 parâmetros  (4× mais que RNN)
+
+
+------------------------------------------------------------------
+5. TRANSFORMER E MECANISMO DE ATENÇÃO
+------------------------------------------------------------------
+
+O Transformer foi introduzido no paper "Attention Is All You
+Need" (Vaswani et al., Google, 2017). Revolucionou o PLN.
+
+Problema que resolveu:
+  RNNs processam palavras em SEQUÊNCIA — uma de cada vez.
+  Isso é lento (não parallelizável) e perde contexto distante.
+
+Solução do Transformer:
+  Processa TODAS as palavras ao mesmo tempo, em paralelo.
+  Cada palavra "conversa" diretamente com todas as outras.
+  Isso é o mecanismo de atenção (self-attention).
+
+Mecanismo de atenção — intuição:
+  Ao processar "banco" em "Fui ao banco sacar dinheiro",
+  o Transformer calcula o quanto "banco" deve prestar atenção
+  em cada outra palavra:
+    "Fui"      → 0.04 (pouca atenção)
+    "ao"       → 0.06 (pouca atenção)
+    "banco"    → 0.12 (si mesmo)
+    "sacar"    → 0.62 (muita atenção! → banco financeiro)
+    "dinheiro" → 0.14 (atenção razoável)
+  
+  Soma = 1.0 (os pesos são probabilidades — softmax garante isso)
+
+Fórmula do Scaled Dot-Product Attention:
+  Attention(Q, K, V) = softmax( Q × Kᵀ / √d_k ) × V
+
+  Q (Query):  "O que estou buscando?"
+  K (Key):    "O que ofereço a quem busca?"
+  V (Value):  "Qual é meu conteúdo real?"
+
+  √d_k: divide pela raiz da dimensão para estabilizar o softmax.
+  Sem isso, produtos escalares grandes saturam o softmax.
+
+Multi-Head Attention:
+  Em vez de uma atenção, o Transformer calcula H em paralelo.
+  Cada "cabeça" aprende um tipo diferente de relação:
+    Cabeça 1 → relações sintáticas (sujeito-verbo)
+    Cabeça 2 → relações semânticas (sinônimos)
+    Cabeça 3 → correferências (pronomes → antecedentes)
+
+Positional Encoding:
+  O Transformer processa tudo em paralelo — sem ordem natural.
+  O Positional Encoding adiciona informação de posição:
+  PE[pos, 2i]   = sin(pos / 10000^(2i/d_model))
+  PE[pos, 2i+1] = cos(pos / 10000^(2i/d_model))
+
+  Isso garante que "banco sacar" ≠ "sacar banco".
+
+Bloco Transformer completo (uma camada):
+  Entrada
+    ↓ Multi-Head Attention (self-attention)
+    ↓ Add & Norm (residual + normalização de camada)
+    ↓ Feed-Forward Network (FFN) — duas camadas densas
+    ↓ Add & Norm (residual + normalização de camada)
+  Saída
+
+Conexões Residuais (Add & Norm):
+  Soma a entrada com a saída de cada sub-camada.
+  Evita o problema de vanishing gradient em redes profundas.
+  O BERT-base tem 12 camadas empilhadas!
+
+  x = LayerNorm(x + Attention(x))   ← residual connection
+  x = LayerNorm(x + FFN(x))         ← residual connection
+
+
+------------------------------------------------------------------
+6. COMPARATIVO FINAL: RNN vs LSTM vs GRU vs TRANSFORMER
+------------------------------------------------------------------
+
+Característica      | RNN    | GRU    | LSTM   | Transformer
+--------------------|--------|--------|--------|------------
+Memória longa       | ❌ Não | ✅ Sim | ✅ Sim | ✅ Atenção
+Processamento       | Serial | Serial | Serial | Paralelo
+Contexto distante   | ❌ Ruim| ✅ Bom | ✅ Bom | ✅ Excelente
+Velocidade treino   | Rápida | Média  | Mais   | Muito rápida
+                    |        |        | lenta  | (com GPU)
+Parâmetros          | Poucos | Médios | Muitos | Muitos
+Modelos derivados   | —      | —      | ELMo   | BERT, GPT
+
+
+------------------------------------------------------------------
+7. IMPLEMENTAÇÕES EM KERAS — RESUMO
+------------------------------------------------------------------
+
+  # RNN simples
+  keras.layers.SimpleRNN(units=16)
+
+  # LSTM
+  keras.layers.LSTM(units=16)
+
+  # GRU
+  keras.layers.GRU(units=16)
+
+  # Bidirecional (funciona com LSTM ou GRU)
+  keras.layers.Bidirectional(keras.layers.LSTM(16))
+
+  # Multi-Head Attention (Transformer)
+  keras.layers.MultiHeadAttention(num_heads=4, key_dim=8)
+
+  # return_sequences=True → retorna todos os estados (para empilhar)
+  # return_sequences=False → retorna apenas o último (para classificar)
+
+
+------------------------------------------------------------------
+FIM DA AULA 3
+Próxima aula: Modelos de Linguagem Pré-treinados (BERT e GPT)
+------------------------------------------------------------------

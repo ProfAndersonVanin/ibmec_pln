@@ -1,0 +1,324 @@
+================================================================
+CURSO DE PLN — AULA 6
+Aplicações de PLN: Tradução, Sumarização e Análise de Sentimento
+================================================================
+
+------------------------------------------------------------------
+1. POR QUE ESTAS TRÊS TAREFAS?
+------------------------------------------------------------------
+
+Tradução, sumarização e análise de sentimento são as três
+aplicações de PLN mais presentes no dia a dia:
+
+  Tradução automática:
+  → Google Tradutor, DeepL, legendas automáticas
+  → Comércio internacional, redes sociais globais
+
+  Sumarização:
+  → Resumir artigos, relatórios, notícias longas
+  → Assistentes que "leem" documentos por você
+
+  Análise de sentimento:
+  → Monitorar redes sociais, avaliar reviews de produtos
+  → Termômetro de opinião pública em tempo real
+
+Todas as três usam a mesma base: modelos Transformer
+pré-treinados e ajustados para cada tarefa específica.
+
+
+------------------------------------------------------------------
+2. TRADUÇÃO AUTOMÁTICA NEURAL
+------------------------------------------------------------------
+
+Evolução histórica:
+  1950-1980 → Baseada em regras (dicionários + gramáticas)
+  1990-2014 → Estatística (SMT — aprende de corpus paralelo)
+  2014-2017 → Neural com LSTM (seq2seq)
+  2017-hoje → Neural com Transformer (estado da arte)
+
+Arquitetura Encoder-Decoder:
+  O Encoder entende o texto de origem (PT).
+  O Decoder gera o texto de destino (EN).
+  Eles se comunicam via vetores de contexto.
+
+  Problema do seq2seq original:
+  Todo o texto de origem era comprimido em UM único vetor.
+  Para frases longas, esse vetor perdia informação!
+
+  Solução — Atenção Cruzada (cross-attention):
+  O Decoder pode consultar QUALQUER parte do Encoder em
+  cada passo de geração. "dog" pode prestar atenção
+  diretamente em "cachorro" na frase de origem.
+
+  Resultado: traduções muito melhores para frases longas.
+
+Modelos Helsinki-NLP:
+  Grupo da Universidade de Helsinki treinou modelos para
+  mais de 1.000 pares de idiomas. Padrão: opus-mt-ORIG-DEST
+
+  Uso em Python:
+    tradutor_pt_en = pipeline('translation',
+                              model='Helsinki-NLP/opus-mt-pt-en')
+    resultado = tradutor_pt_en("O Brasil é lindo.")
+    print(resultado[0]['translation_text'])
+    # "Brazil is beautiful."
+
+    tradutor_en_pt = pipeline('translation',
+                              model='Helsinki-NLP/opus-mt-tc-big-en-pt')
+    resultado = tradutor_en_pt("Artificial intelligence is amazing.")
+    print(resultado[0]['translation_text'])
+
+Back-translation (retro-tradução):
+  Técnica de avaliar qualidade: PT → EN → PT
+  Se o texto final é parecido com o original, a tradução
+  preservou o significado.
+
+  Também usada para criar dados de treino sintéticos:
+  textos em inglês são traduzidos para PT e usados como
+  pares de treino, aumentando o dataset sem custo.
+
+Métrica de avaliação — BLEU Score:
+  BLEU mede a precisão de n-gramas do texto traduzido
+  em comparação com tradução humana de referência.
+
+  Referência: "The cat sat on the mat"
+  Tradução:   "The cat is on the mat"
+  1-gramas em comum: The, cat, on, the, mat = 5/6 = 83%
+  2-gramas em comum: 3/5 = 60%
+  BLEU ≈ média geométrica dos n-gramas (0 a 100)
+
+  Interpretação:
+    BLEU < 10  → quase incompreensível
+    BLEU 20-30 → aceitável com erros notáveis
+    BLEU 30-40 → boa qualidade para uso geral
+    BLEU > 50  → qualidade próxima a tradutores humanos
+
+Limitações da tradução automática:
+  → Ambiguidade: "banco" financeiro vs assento
+  → Expressões idiomáticas sem tradução literal
+  → Línguas com poucos dados (baixo recurso)
+  → Domínios especializados (medicina, direito)
+
+
+------------------------------------------------------------------
+3. SUMARIZAÇÃO AUTOMÁTICA
+------------------------------------------------------------------
+
+Tipos de sumarização:
+  Extrativa: copia frases importantes do texto original
+  → Fidedigna (nunca inventa), mas pode ser desconectada
+  → Melhor para: documentos legais, contratos, laudos
+
+  Abstrativa: reescreve o conteúdo com novas frases
+  → Mais fluente e coesa, como um humano resumiria
+  → Pode "alucinar" (inventar informação não presente)
+  → Melhor para: notícias, artigos, boletins executivos
+
+Modelo BART:
+  BART = Bidirectional and Auto-Regressive Transformers
+  Desenvolvido pelo Facebook em 2019.
+
+  Arquitetura híbrida:
+  → Encoder bidirecional (como BERT): compreende o texto
+  → Decoder autorregressivo (como GPT): gera o resumo
+
+  Pré-treinamento com ruído:
+  O BART aprende a reconstruir textos corrompidos:
+    Original: "Natural language processing is fascinating"
+    Corrompido: "language [MASK] is [DELETED] fascinating natural"
+    BART aprende: reconstruir o original
+
+  Isso o prepara naturalmente para sumarização!
+  Resumir = reconstruir a essência de um texto.
+
+  Fine-tuning para sumarização:
+  Dataset CNN/DailyMail: 300.000 pares (artigo → resumo)
+  Modelo resultante: facebook/bart-large-cnn
+
+  Uso em Python:
+    resumidor = pipeline('summarization',
+                         model='facebook/bart-large-cnn')
+    resumo = resumidor(
+        texto_longo,
+        max_length=80,    # máximo de tokens no resumo
+        min_length=30,    # mínimo de tokens no resumo
+        do_sample=False   # determinístico (reproduzível)
+    )[0]['summary_text']
+
+  ATENÇÃO: resumidor() retorna uma LISTA de dicionários!
+  Sempre acesse com [0]['summary_text'].
+  Erro comum: analisador(resumidor(texto)) → TypeError!
+  Correto: analisador(resumidor(texto)[0]['summary_text'])
+
+Métrica de avaliação — ROUGE:
+  ROUGE mede o RECALL de n-gramas.
+  (Diferente do BLEU que mede precisão!)
+
+  ROUGE-1: sobreposição de unigramas (palavras individuais)
+  ROUGE-2: sobreposição de bigramas (pares de palavras)
+  ROUGE-L: maior subsequência comum (LCS)
+
+  Exemplo ROUGE-1:
+    Referência: "O modelo BART resume textos longos eficientemente"
+    Resumo:     "BART é eficiente para resumir textos"
+    Palavras comuns: BART, resumir/resume, textos, eficiente = 4
+    ROUGE-1 = 4/8 = 0.50 (50%)
+
+Alucinação em sumarização abstrativa:
+  O modelo pode gerar informação não presente no texto.
+  Ex: resumo menciona "CEO demitido" quando o texto apenas
+  diz que "a empresa anunciou mudanças na liderança".
+
+  Impactos graves em:
+  → Documentos médicos (diagnósticos inventados)
+  → Contratos jurídicos (cláusulas inexistentes)
+  → Notícias financeiras (fatos distorcidos)
+
+  Como mitigar:
+  → Usar sumarização extrativa para domínios críticos
+  → Métricas de fidelidade factual (FactCC)
+  → Revisão humana para conteúdo crítico
+
+
+------------------------------------------------------------------
+4. ANÁLISE DE SENTIMENTO
+------------------------------------------------------------------
+
+Definição:
+  Análise de sentimento (ou opinion mining) classifica o
+  tom emocional de um texto em positivo, negativo ou neutro.
+
+Níveis de análise:
+  Documento: classifica o texto inteiro
+    "Adorei o produto!" → POSITIVO
+
+  Sentença: classifica frase por frase
+    "A câmera é ótima, mas a bateria dura pouco."
+    → câmera: POSITIVO | bateria: NEGATIVO
+
+  Aspecto: sentimento por atributo específico
+    câmera: POSITIVO | bateria: NEGATIVO | preço: NEUTRO
+
+Três abordagens:
+  1. Léxico de sentimento:
+     Cada palavra tem uma pontuação pré-definida.
+     "excelente" = +3, "terrível" = -3, "ok" = 0
+     Score final = soma das pontuações das palavras.
+     Vantagem: sem treino, interpretável, rápido.
+     Limitação: não captura contexto, negação, ironia.
+
+  2. Machine Learning clássico (SVM, Naive Bayes + TF-IDF):
+     Features manuais + algoritmo de classificação.
+     Vantagem: funciona com poucos dados rotulados.
+     Limitação: features manuais, sem semântica profunda.
+
+  3. Deep Learning (BERT e variantes):
+     Atenção bidirecional captura contexto completo.
+     Vantagem: estado da arte, captura nuances.
+     Limitação: requer GPU e muitos dados para fine-tuning.
+
+Uso em Python:
+  analisador = pipeline(
+      'sentiment-analysis',
+      model='lxyuan/distilbert-base-multilingual-cased-sentiments-student',
+      top_k=None  # retorna score de todas as classes
+  )
+
+  scores = analisador("Adorei o produto!")[0]
+  melhor = max(scores, key=lambda x: x['score'])
+  print(f"{melhor['label']}: {melhor['score']:.0%}")
+  # positive: 97%
+
+Desafios da análise de sentimento:
+  Negação: "não gostei nada" → sem negação parece positivo
+  Ironia:  "Que serviço maravilhoso, esperei 4 horas!"
+           → positivo no léxico, negativo no sentido real
+  Comparação: "melhor que o anterior" → não é necessariamente bom
+  Domínio: "este filme é doentio!" → pode ser elogio em cinema
+  Multilingualidade: modelos ingleses têm queda em outros idiomas
+
+Métricas de avaliação:
+  Accuracy: % de textos classificados corretamente.
+  Problema: em dataset com 90% positivos e 10% negativos,
+  um modelo que classifica TUDO como positivo tem 90% de
+  accuracy — mas nunca detecta negativos!
+
+  F1-Score Macro: calcula F1 para cada classe e faz média.
+  Penaliza modelos que ignoram classes minoritárias.
+  SEMPRE use F1-Score para datasets desbalanceados.
+
+  Exemplo numérico:
+    Dataset: 900 positivos + 100 negativos
+    Modelo "sempre positivo":
+      Accuracy = 900/1000 = 90% ← parece bom!
+      F1 negativo = 0 (nunca prevê negativo)
+      Macro-F1 = (F1_pos + F1_neg) / 2 = (0.95 + 0) / 2 = 47%
+      ← expõe o problema!
+
+
+------------------------------------------------------------------
+5. PIPELINE COMPLETO: NOTÍCIA → ANÁLISE
+------------------------------------------------------------------
+
+Exemplo de sistema real combinando as três tarefas:
+
+  def analisar_noticia(texto_en):
+      # 1. Resumir o artigo (BART)
+      resumo_en = resumidor(texto_en,
+                            max_length=60,
+                            min_length=20)[0]['summary_text']
+
+      # 2. Traduzir o resumo para PT (Helsinki)
+      resumo_pt = tradutor_en_pt(resumo_en)[0]['translation_text']
+
+      # 3. Analisar o sentimento em PT (DistilBERT)
+      scores   = analisador(resumo_pt)[0]
+      sentimento = max(scores, key=lambda x: x['score'])
+
+      return {
+          'resumo_en'  : resumo_en,
+          'resumo_pt'  : resumo_pt,
+          'sentimento' : sentimento['label'],
+          'confianca'  : sentimento['score'],
+      }
+
+Propagação de erros em pipelines:
+  Se o resumidor gera um resumo impreciso, o classificador
+  de sentimento vai analisar informação incorreta.
+  O resultado final fica duplamente incorreto.
+
+  Boas práticas:
+  → Avaliar cada etapa separadamente com métricas
+  → Incluir fallbacks para baixa confiança
+  → Monitorar a qualidade em produção
+
+
+------------------------------------------------------------------
+6. RESUMO DAS MÉTRICAS
+------------------------------------------------------------------
+
+  Tarefa        | Métrica   | O que mede         | Escala
+  --------------|-----------|--------------------|-----------
+  Tradução      | BLEU      | Precisão n-gramas  | 0 a 100
+  Sumarização   | ROUGE-1   | Recall unigramas   | 0 a 1
+  Sumarização   | ROUGE-L   | Subsequência comum | 0 a 1
+  Sentimento    | Accuracy  | % acertos          | 0% a 100%
+  Sentimento    | Macro-F1  | Média por classe   | 0 a 1
+
+
+------------------------------------------------------------------
+7. MODELOS UTILIZADOS NESTA AULA
+------------------------------------------------------------------
+
+  Tarefa          | Modelo
+  ----------------|------------------------------------------
+  Tradução PT→EN  | Helsinki-NLP/opus-mt-pt-en
+  Tradução EN→PT  | Helsinki-NLP/opus-mt-tc-big-en-pt
+  Sumarização     | facebook/bart-large-cnn
+  Sentimento PT   | lxyuan/distilbert-multilingual-sentiments
+
+
+------------------------------------------------------------------
+FIM DA AULA 6
+Próxima aula: Casos de Uso (Chatbots, Motores de Busca, RAG)
+------------------------------------------------------------------

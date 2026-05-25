@@ -1,0 +1,291 @@
+================================================================
+CURSO DE PLN — AULA 7
+Casos de Uso: Chatbots, Motores de Busca e RAG
+================================================================
+
+------------------------------------------------------------------
+1. CHATBOTS — VISÃO GERAL
+------------------------------------------------------------------
+
+Um chatbot é um sistema que simula uma conversa humana por
+texto ou voz. Existem três gerações de chatbots:
+
+Geração 1 — Baseados em regras (1966–2000):
+  → Seguem scripts fixos com if/else e padrões regex
+  → ELIZA (1966) foi o primeiro chatbot da história
+  → Funcionam bem para fluxos simples e previsíveis
+  → Exemplo: "Digite 1 para SAC, 2 para financeiro..."
+  → Limitação: não lidam com perguntas fora do script
+
+Geração 2 — Machine Learning (2000–2017):
+  → Treinados com dados históricos de conversas
+  → Usam intenção + entidades para entender a pergunta
+  → Ferramentas: Dialogflow, RASA, IBM Watson
+  → Melhor variabilidade, mas ainda limitados em escopo
+
+Geração 3 — LLMs (2017–hoje):
+  → Baseados em Transformers pré-treinados (GPT, BERT, LLaMA)
+  → Compreendem contexto, ambiguidade e nuances
+  → Exemplos: ChatGPT, Claude, Gemini, Copilot
+  → Limitações: podem alucinar, custo computacional alto
+
+Componentes de um chatbot moderno:
+  1. NLU (Natural Language Understanding): entende a entrada
+  2. Gerenciamento de diálogo: decide o que responder
+  3. NLG (Natural Language Generation): gera a resposta
+  4. Memória de contexto: lembra da conversa anterior
+
+
+------------------------------------------------------------------
+2. MOTORES DE BUSCA SEMÂNTICA
+------------------------------------------------------------------
+
+Busca tradicional (keyword search):
+  → Procura palavras exatas nos documentos
+  → "banco financeiro" encontra documentos com essas palavras
+  → Não entende que "banco" e "instituição financeira" são iguais
+  → Falha com sinônimos, paráfrases, linguagem natural
+
+Busca semântica (semantic search):
+  → Converte a consulta e os documentos em embeddings
+  → Compara pelo significado, não pelas palavras
+  → "banco financeiro" encontra documentos sobre "instituição bancária"
+  → Funciona com sinônimos e paráfrases automaticamente
+
+Exemplo prático:
+  Busca keyword: "como fazer backup"
+  → Encontra: documentos com a palavra exata "backup"
+  → Perde: documentos com "cópia de segurança", "salvar dados"
+
+  Busca semântica: "como fazer backup"
+  → Encontra: backup, cópia de segurança, salvar dados, restaurar
+  → Porque todos têm embeddings próximos no espaço vetorial!
+
+Ferramentas para busca semântica:
+  FAISS (Facebook):
+  → Biblioteca de busca vetorial ultra-rápida
+  → Indexa milhões de vetores
+  → Busca os N mais próximos em milissegundos
+  → Gratuito e de código aberto
+
+  ChromaDB, Pinecone, Weaviate:
+  → Bancos de dados vetoriais para produção
+  → Persistência em disco, escalabilidade
+  → Mais fáceis de integrar em sistemas maiores
+
+
+------------------------------------------------------------------
+3. RAG — RETRIEVAL-AUGMENTED GENERATION
+------------------------------------------------------------------
+
+RAG = Retrieval-Augmented Generation (Geração com Recuperação)
+
+Motivação:
+  LLMs como GPT e BERT só sabem o que aprenderam no treino.
+  → Não conhecem informações após sua data de corte
+  → Podem "alucinar" (inventar informações)
+  → Não têm acesso a documentos privados da empresa
+
+  RAG resolve isso: em vez de depender só do treino,
+  o modelo busca informações relevantes ANTES de responder.
+
+Como o RAG funciona (passo a passo):
+  FASE 1 — INDEXAÇÃO (feita uma vez, offline):
+    1. Coletar documentos (PDFs, textos, artigos)
+    2. Dividir em chunks (pedaços de 200-500 tokens)
+    3. Gerar embeddings de cada chunk
+    4. Armazenar embeddings no índice FAISS (ou similar)
+
+  FASE 2 — CONSULTA (feita em tempo real):
+    1. Receber a pergunta do usuário
+    2. Gerar o embedding da pergunta
+    3. Buscar no FAISS os top-k chunks mais similares
+    4. Montar o prompt: contexto (chunks) + pergunta
+    5. Enviar ao LLM para gerar a resposta
+
+  Diagrama:
+    Pergunta → embedding → busca FAISS
+                                ↓
+                     top-k chunks relevantes
+                                ↓
+              [Chunk 1] + [Chunk 2] + [Chunk 3] + Pergunta
+                                ↓
+                              LLM
+                                ↓
+                     Resposta fundamentada ✅
+
+Vantagens do RAG sobre LLM puro:
+  → Respostas baseadas em documentos reais (menos alucinação)
+  → Funciona com informações privadas da empresa
+  → Atualizado: basta atualizar o índice, não o modelo
+  → Rastreável: cita as fontes usadas na resposta
+
+Parâmetro top-k:
+  Quantos chunks recuperar para usar como contexto.
+  top_k=1 → só o mais relevante → respostas mais focadas
+  top_k=3 → três chunks → mais contexto, respostas melhores
+  top_k=10 → muito contexto → pode confundir o modelo
+
+  Valor recomendado: 3 a 5 para a maioria dos casos.
+
+Chunking — estratégia de divisão:
+  chunk_size: tamanho de cada pedaço (em palavras ou tokens)
+  overlap: sobreposição entre chunks consecutivos
+
+  Exemplo (chunk_size=100, overlap=20):
+    Chunk 1: palavras 1-100
+    Chunk 2: palavras 81-180  ← overlapping de 20 palavras
+    Chunk 3: palavras 161-260
+
+  Por que overlap?
+  Informações importantes que caem na "fronteira" entre
+  dois chunks não são perdidas.
+
+Modelos de embedding para RAG:
+  all-MiniLM-L6-v2 → ~90 MB, rápido, multilíngue
+  all-mpnet-base-v2 → melhor qualidade, ~420 MB
+  paraphrase-multilingual-mpnet → otimizado para PT
+
+Prompt de contexto bem estruturado:
+  Context 1 [aula3_rnn]: O hidden state é um vetor que...
+  Context 2 [aula3_lstm]: A LSTM resolve o problema...
+  Context 3 [aula4_bert]: O BERT usa atenção bidirecional...
+
+  Question: What is the difference between RNN and LSTM?
+  Answer:
+
+
+------------------------------------------------------------------
+4. ASSISTENTES INTELIGENTES
+------------------------------------------------------------------
+
+Exemplos de assistentes modernos e suas bases:
+
+  ChatGPT (OpenAI):
+  → GPT-4 + RLHF (Reinforcement Learning from Human Feedback)
+  → Plug-ins que permitem busca na web (RAG externo)
+  → Memória de conversas anteriores
+
+  Claude (Anthropic):
+  → Treinado com foco em segurança e utilidade
+  → Janela de contexto grande (200k tokens)
+  → Útil para análise de documentos longos
+
+  Gemini (Google):
+  → Multimodal nativo: texto, imagem, código, vídeo
+  → Integrado ao ecossistema Google (Docs, Drive, Gmail)
+
+  Copilot (Microsoft / OpenAI):
+  → Especializado em código (GitHub Copilot)
+  → Integrado ao VS Code e IDEs
+
+Como o RLHF funciona (simplificado):
+  1. O modelo gera várias respostas para uma pergunta
+  2. Humanos avaliam qual é melhor
+  3. Um modelo de recompensa aprende com essas avaliações
+  4. O LLM é treinado para maximizar a recompensa
+  → Resultado: respostas mais úteis, honestas e seguras
+
+
+------------------------------------------------------------------
+5. CASOS DE USO POR SETOR
+------------------------------------------------------------------
+
+Saúde:
+  → Triagem de sintomas por chatbot
+  → Sumarização de prontuários médicos
+  → Busca semântica em literatura científica
+  → Extração de informações de laudos (NER)
+
+Jurídico:
+  → Busca em jurisprudência por similaridade semântica
+  → Sumarização de contratos longos
+  → Identificação de cláusulas específicas (RAG)
+  → Classificação de tipos de documentos legais
+
+Financeiro:
+  → Análise de sentimento de notícias e relatórios
+  → Chatbot de atendimento ao cliente
+  → Extração de dados de balanços (NER)
+  → Tradução de relatórios internacionais
+
+Educação:
+  → Tutores inteligentes que respondem dúvidas (RAG)
+  → Correção automática de redações
+  → Geração de questões a partir de textos
+  → Sumarização de aulas para revisão
+
+E-commerce:
+  → Análise de sentimento de reviews de produtos
+  → Chatbots de suporte ao cliente
+  → Busca semântica de produtos por descrição
+  → Categorização automática de produtos
+
+
+------------------------------------------------------------------
+6. MÉTRICAS PARA SISTEMAS RAG
+------------------------------------------------------------------
+
+Avaliação de retrieval (busca):
+  Precision@k: dos k chunks recuperados, quantos são relevantes?
+  Recall@k:    dos chunks relevantes existentes, quantos foram
+               recuperados entre os top-k?
+
+Avaliação de geração:
+  Faithfulness: a resposta está baseada no contexto fornecido?
+  Answer Relevance: a resposta responde a pergunta feita?
+  Context Relevance: os chunks recuperados são relevantes?
+
+Ferramentas de avaliação automática de RAG:
+  RAGAS: framework específico para avaliar sistemas RAG
+  TruLens: monitora qualidade de respostas em produção
+  Evaluation automática: usa um LLM para julgar outro LLM
+
+
+------------------------------------------------------------------
+7. BOAS PRÁTICAS PARA SISTEMAS DE PRODUÇÃO
+------------------------------------------------------------------
+
+Chunking:
+  → Testar chunk_size entre 200 e 500 tokens
+  → Usar overlap de 10-20% do chunk_size
+  → Considerar divisão por parágrafo ou seção
+
+Embeddings:
+  → Normalizar vetores antes de indexar no FAISS
+  → Usar IndexFlatIP (produto escalar) para vetores normalizados
+  → Para grandes datasets, usar IndexIVFFlat (mais rápido)
+
+Prompt engineering para RAG:
+  → Instruir o modelo a responder SOMENTE com base no contexto
+  → Incluir instrução: "If the answer is not in the context,
+    say you don't know."
+  → Isso reduz dramaticamente as alucinações
+
+Monitoramento:
+  → Logar perguntas e respostas para revisão humana
+  → Monitorar scores de similaridade (queda = índice desatualizado)
+  → Alertar quando a confiança da resposta for baixa
+
+
+------------------------------------------------------------------
+8. GLOSSÁRIO DESTA AULA
+------------------------------------------------------------------
+
+  RAG             → Retrieval-Augmented Generation
+  Chunk           → pedaço de texto usado como unidade de busca
+  Overlap         → sobreposição entre chunks consecutivos
+  Embedding       → representação vetorial de um texto
+  FAISS           → biblioteca de busca vetorial (Facebook)
+  top-k           → quantidade de resultados a recuperar
+  Hallucination   → modelo inventa informação não presente
+  RLHF            → Reinforcement Learning from Human Feedback
+  NLU             → Natural Language Understanding
+  NLG             → Natural Language Generation
+  Semantic search → busca por significado, não por palavras exatas
+
+
+------------------------------------------------------------------
+FIM DA AULA 7 — FIM DO CURSO
+Parabéns por completar o Curso de PLN!
+------------------------------------------------------------------

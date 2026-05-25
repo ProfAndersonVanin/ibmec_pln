@@ -1,0 +1,346 @@
+================================================================
+CURSO DE PLN — REFERÊNCIA RÁPIDA
+Modelos, Ferramentas e Comandos Essenciais
+================================================================
+
+------------------------------------------------------------------
+1. PIPELINE() DO HUGGING FACE — REFERÊNCIA COMPLETA
+------------------------------------------------------------------
+
+Instalação:
+  pip install transformers
+
+Importação:
+  from transformers import pipeline, AutoTokenizer, AutoModel
+
+Tarefas disponíveis no pipeline():
+
+  ANÁLISE DE SENTIMENTO
+  sentimento = pipeline('sentiment-analysis')
+  sentimento("I love this course!")
+  # [{'label': 'POSITIVE', 'score': 0.9998}]
+
+  ANÁLISE DE SENTIMENTO EM PORTUGUÊS
+  sentimento_pt = pipeline(
+      'sentiment-analysis',
+      model='lxyuan/distilbert-base-multilingual-cased-sentiments-student',
+      top_k=None
+  )
+  scores = sentimento_pt("Adorei o produto!")[0]
+  melhor = max(scores, key=lambda x: x['score'])
+
+  FILL-MASK (BERT)
+  bert = pipeline('fill-mask', model='bert-base-uncased')
+  bert("Paris is the [MASK] of France.", top_k=3)
+
+  FILL-MASK EM PORTUGUÊS (BERTimbau)
+  bert_pt = pipeline('fill-mask',
+                     model='neuralmind/bert-base-portuguese-cased')
+  bert_pt("O [MASK] é o maior país da América do Sul.", top_k=3)
+
+  PERGUNTAS E RESPOSTAS
+  qa = pipeline('question-answering')
+  qa(question="Who created BERT?",
+     context="BERT was created by Google in 2018.")
+  # {'answer': 'Google', 'score': 0.997}
+
+  PERGUNTAS E RESPOSTAS EM PORTUGUÊS
+  qa_pt = pipeline(
+      'question-answering',
+      model='pierreguillou/bert-base-cased-squad-v1.1-portuguese'
+  )
+  qa_pt(question="Qual é a capital do Brasil?",
+        context="A capital federal do Brasil é Brasília.")
+
+  SUMARIZAÇÃO
+  resumidor = pipeline('summarization',
+                       model='facebook/bart-large-cnn')
+  resultado = resumidor(texto, max_length=80, min_length=30)
+  resumo = resultado[0]['summary_text']  # ATENÇÃO: [0]['summary_text']!
+
+  TRADUÇÃO PORTUGUÊS → INGLÊS
+  trad_pt_en = pipeline('translation',
+                         model='Helsinki-NLP/opus-mt-pt-en')
+  trad_pt_en("O Brasil é lindo.")[0]['translation_text']
+
+  TRADUÇÃO INGLÊS → PORTUGUÊS
+  trad_en_pt = pipeline('translation',
+                         model='Helsinki-NLP/opus-mt-tc-big-en-pt')
+  trad_en_pt("Brazil is beautiful.")[0]['translation_text']
+
+  GERAÇÃO DE TEXTO (GPT-2)
+  gerador = pipeline('text-generation', model='gpt2',
+                     pad_token_id=50256)
+  gerador("The future of AI", max_new_tokens=20,
+          temperature=0.8, do_sample=True)[0]['generated_text']
+
+  ZERO-SHOT CLASSIFICATION
+  classificador = pipeline('zero-shot-classification',
+                           model='facebook/bart-large-mnli')
+  classificador(texto,
+                candidate_labels=['esporte', 'política', 'tecnologia'])
+
+  RECONHECIMENTO DE ENTIDADES (NER)
+  ner = pipeline('ner',
+                 model='Davlan/distilbert-base-multilingual-cased-ner-hrl',
+                 aggregation_strategy='simple')
+  ner("A Petrobras investiu em São Paulo.")[0]['entity_group']
+
+  IMAGE CAPTIONING (BLIP)
+  captioner = pipeline('image-to-text',
+                       model='Salesforce/blip-image-captioning-base')
+  captioner(img_pil, max_new_tokens=50)[0]['generated_text']
+
+  VISUAL QUESTION ANSWERING (BLIP)
+  vqa = pipeline('visual-question-answering',
+                 model='Salesforce/blip-vqa-base')
+  vqa(image=img_pil, question="Is there a tree?",
+      top_k=1)[0]['answer']
+
+  ZERO-SHOT IMAGE CLASSIFICATION (CLIP)
+  clip = pipeline('zero-shot-image-classification',
+                  model='openai/clip-vit-base-patch32')
+  clip(img_pil, candidate_labels=['day', 'night', 'sunset'])
+
+
+------------------------------------------------------------------
+2. NLTK — REFERÊNCIA RÁPIDA
+------------------------------------------------------------------
+
+  import nltk
+  from nltk.tokenize import word_tokenize, sent_tokenize
+  from nltk.corpus import stopwords
+  from nltk.stem import RSLPStemmer
+  from nltk import FreqDist
+  from nltk.corpus import wordnet as wn
+
+  # Downloads necessários (uma vez)
+  nltk.download('punkt')
+  nltk.download('stopwords')
+  nltk.download('rslp')
+  nltk.download('wordnet')
+  nltk.download('punkt_tab')
+
+  # Tokenização
+  word_tokenize("O gato dorme.", language='portuguese')
+
+  # Stopwords
+  stops = set(stopwords.words('portuguese'))
+  tokens_limpos = [t for t in tokens if t.lower() not in stops]
+
+  # Stemming
+  stemmer = RSLPStemmer()
+  stemmer.stem('comunicação')  # → 'comunic'
+
+  # Frequência
+  freq = FreqDist(tokens)
+  freq.most_common(10)
+
+  # WordNet
+  wn.synsets('bank')
+  wn.synsets('bank')[0].definition()
+  wn.synsets('bank')[0].examples()
+
+
+------------------------------------------------------------------
+3. SPACY — REFERÊNCIA RÁPIDA
+------------------------------------------------------------------
+
+  import spacy
+  # pip install spacy
+  # python -m spacy download pt_core_news_sm
+
+  nlp = spacy.load('pt_core_news_sm')
+  doc = nlp("Pedro comprou um livro na Petrobras.")
+
+  # Iterando tokens
+  for token in doc:
+      token.text        # texto original
+      token.lemma_      # lema (forma base)
+      token.pos_        # categoria gramatical
+      token.dep_        # relação de dependência
+      token.is_stop     # é stopword?
+      token.ent_type_   # tipo de entidade
+
+  # Entidades
+  for ent in doc.ents:
+      ent.text          # texto da entidade
+      ent.label_        # tipo: PER, ORG, LOC, GPE, MONEY
+
+  # Categorias POS comuns
+  # NOUN = substantivo  VERB = verbo  ADJ = adjetivo
+  # PROPN = nome próprio  DET = artigo  ADV = advérbio
+
+  # Relações de dependência comuns
+  # nsubj = sujeito nominal  obj = objeto  ROOT = raiz
+
+
+------------------------------------------------------------------
+4. KERAS — REFERÊNCIA RÁPIDA
+------------------------------------------------------------------
+
+  from tensorflow import keras
+
+  # Vetorização de texto
+  vetorizador = keras.layers.TextVectorization(
+      max_tokens=5000,
+      output_mode='int',
+      output_sequence_length=50
+  )
+  vetorizador.adapt(textos)
+  X = vetorizador(textos).numpy()
+
+  # Camadas para PLN
+  keras.layers.Embedding(vocab_size, embed_dim)
+  keras.layers.SimpleRNN(units=16, return_sequences=False)
+  keras.layers.LSTM(units=16, return_sequences=True)
+  keras.layers.GRU(units=16)
+  keras.layers.Bidirectional(keras.layers.LSTM(16))
+  keras.layers.MultiHeadAttention(num_heads=4, key_dim=8)
+  keras.layers.GlobalAveragePooling1D()
+  keras.layers.Dense(1, activation='sigmoid')  # binário
+  keras.layers.Dense(n, activation='softmax')  # multiclasse
+
+  # Compilar e treinar
+  modelo.compile(optimizer='adam',
+                 loss='binary_crossentropy',  # ou 'categorical_crossentropy'
+                 metrics=['accuracy'])
+  modelo.fit(X, y, epochs=10, batch_size=32)
+
+
+------------------------------------------------------------------
+5. SENTENCE TRANSFORMERS + FAISS — REFERÊNCIA RAG
+------------------------------------------------------------------
+
+  from sentence_transformers import SentenceTransformer
+  import faiss, numpy as np
+
+  # Carregar modelo de embedding
+  modelo = SentenceTransformer('all-MiniLM-L6-v2')
+
+  # Gerar embeddings
+  embeddings = modelo.encode(textos, convert_to_numpy=True)
+
+  # Criar índice FAISS
+  dim = embeddings.shape[1]
+  embeddings_norm = embeddings.astype('float32')
+  faiss.normalize_L2(embeddings_norm)
+
+  indice = faiss.IndexFlatIP(dim)  # Inner Product (cosseno)
+  indice.add(embeddings_norm)
+
+  # Buscar
+  def buscar(pergunta, top_k=3):
+      emb = modelo.encode([pergunta], convert_to_numpy=True).astype('float32')
+      faiss.normalize_L2(emb)
+      scores, indices = indice.search(emb, top_k)
+      return [(textos[i], scores[0][j]) for j, i in enumerate(indices[0])]
+
+  resultados = buscar("O que é LSTM?", top_k=3)
+
+
+------------------------------------------------------------------
+6. OPENCV PARA PLN MULTIMODAL — REFERÊNCIA RÁPIDA
+------------------------------------------------------------------
+
+  import cv2
+  import numpy as np
+  from PIL import Image
+
+  # Ler imagem
+  img = cv2.imread('foto.jpg')        # BGR por padrão!
+
+  # Converter BGR → RGB (SEMPRE antes de enviar a modelos)
+  img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+  # Redimensionar
+  img_224 = cv2.resize(img_rgb, (224, 224))
+
+  # Normalizar para [0.0, 1.0]
+  img_norm = img_224.astype(np.float32) / 255.0
+
+  # Converter para PIL (necessário para BLIP e CLIP)
+  img_pil = Image.fromarray(img_rgb)
+
+  # Brilho médio
+  cinza = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+  brilho = cinza.mean()
+
+  # Histograma de cor
+  for i, canal in enumerate(['blue', 'green', 'red']):
+      hist = cv2.calcHist([img], [i], None, [256], [0, 256])
+
+
+------------------------------------------------------------------
+7. ERROS COMUNS E COMO RESOLVER
+------------------------------------------------------------------
+
+  ERRO: TypeError ao passar resumo para analisador
+    resumo = resumidor(texto)          # ERRADO
+    analisador(resumo)                 # TypeError!
+    
+    resumo = resumidor(texto)[0]['summary_text']  # CORRETO
+    analisador(resumo)                             # OK!
+
+  ERRO: fbgemm.dll (WinError 182)
+    pip uninstall torch torchvision -y
+    pip install torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu
+
+  ERRO: Kernel reinicia ao carregar modelo
+    Use modelo menor: model='prajjwal1/bert-tiny' (~17 MB)
+    Ou use Google Colab (RAM de 12 GB gratuita)
+
+  ERRO: Modelo de sentimento errado em Português
+    Não usar: pipeline('sentiment-analysis')  # inglês!
+    Usar: pipeline('sentiment-analysis',
+                   model='lxyuan/distilbert-multilingual-sentiments')
+
+  ERRO: BART gera resumo em inglês para texto PT
+    BART foi treinado em inglês.
+    Solução: traduzir PT→EN → resumir → EN→PT
+
+  ERRO: Token [MASK] não funciona com BERTimbau
+    BERTimbau usa [MASK] igual ao BERT original.
+    Verifique se está usando o modelo correto:
+    model='neuralmind/bert-base-portuguese-cased'
+
+
+------------------------------------------------------------------
+8. CHECKLIST DE BOAS PRÁTICAS
+------------------------------------------------------------------
+
+  TOKENIZAÇÃO:
+  ☑ Usar word_tokenize(texto, language='portuguese')
+  ☑ Converter para lowercase antes de comparar
+  ☑ Verificar se remoção de stopwords é adequada para sua tarefa
+
+  MODELOS EM PORTUGUÊS:
+  ☑ BERTimbau para tarefas de compreensão em PT
+  ☑ Modelo multilíngue para sentimento em PT
+  ☑ Helsinki-NLP para tradução PT↔EN
+
+  SUMARIZAÇÃO:
+  ☑ Sempre acessar [0]['summary_text']
+  ☑ Definir max_length e min_length adequados
+  ☑ Para textos em PT, traduzir para EN antes de resumir
+
+  PIPELINE MULTIMODAL:
+  ☑ Sempre converter BGR→RGB antes de enviar ao modelo
+  ☑ Converter OpenCV para PIL: Image.fromarray(img_rgb)
+  ☑ CLIP funciona melhor com categorias em inglês
+
+  RAG:
+  ☑ Normalizar embeddings antes de indexar no FAISS
+  ☑ Usar overlap no chunking (10-20% do chunk_size)
+  ☑ Testar diferentes valores de top_k
+  ☑ Acessar resultado com resultado['chunk']['texto']
+
+  AVALIAÇÃO:
+  ☑ Usar F1-Score Macro para datasets desbalanceados
+  ☑ Nunca confiar só na accuracy
+  ☑ Avaliar em dados que o modelo nunca viu
+
+
+================================================================
+FIM DA REFERÊNCIA RÁPIDA
+================================================================

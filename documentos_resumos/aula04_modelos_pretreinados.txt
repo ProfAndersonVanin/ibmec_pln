@@ -1,0 +1,312 @@
+================================================================
+CURSO DE PLN — AULA 4
+Modelos de Linguagem Pré-treinados: BERT, GPT e BERTimbau
+================================================================
+
+------------------------------------------------------------------
+1. O QUE É UM MODELO PRÉ-TREINADO?
+------------------------------------------------------------------
+
+Modelos pré-treinados são redes neurais que já foram treinadas
+em enormes quantidades de texto antes de serem disponibilizadas.
+
+Analogia do universitário:
+  Treinar do zero: contratar alguém sem experiência e ensinar
+  tudo — matemática, leitura, escrita. Demora anos.
+
+  Modelo pré-treinado: contratar um recém-formado que já sabe
+  ler, escrever e raciocinar. Você só ensina as regras
+  específicas do seu trabalho. Muito mais rápido!
+
+Por que pré-treinamento funciona?
+  A linguagem tem estruturas que se repetem em qualquer domínio:
+  → Gramática ("O X verbo o Y" — padrão sujeito-verbo-objeto)
+  → Semântica ("bom" e "ótimo" têm significados parecidos)
+  → Lógica ("se A causa B e B causa C, A está ligado a C")
+
+  Ao treinar em bilhões de textos, o modelo aprende tudo isso.
+  O fine-tuning apenas adapta esse conhecimento para sua tarefa.
+
+Escala dos modelos (parâmetros):
+  BERT-base:    110 milhões de parâmetros
+  BERT-large:   340 milhões de parâmetros
+  GPT-2:        1,5 bilhão de parâmetros
+  GPT-3:        175 bilhões de parâmetros
+  BERTimbau:    110 milhões de parâmetros
+  LLaMA-2 7B:   7 bilhões de parâmetros
+
+
+------------------------------------------------------------------
+2. BERT — BIDIRECTIONAL ENCODER REPRESENTATIONS FROM TRANSFORMERS
+------------------------------------------------------------------
+
+Criado pelo Google em 2018. O nome descreve a arquitetura:
+
+  Bidirectional: lê o texto nos dois sentidos (← e →)
+  Encoder:       componente do Transformer que compreende
+  Representations: vetores que capturam o significado
+  from Transformers: baseado na arquitetura Transformer
+
+Por que bidirecional importa?
+  BERT ao analisar "banco" em "Fui ao banco sacar dinheiro":
+  → Vê "Fui ao" (esquerda) E "sacar dinheiro" (direita)
+  → Conclui: banco FINANCEIRO
+
+  Modelo unidirecional (só →):
+  → Chega em "banco" tendo visto apenas "Fui ao"
+  → Não sabe ainda que vem "sacar dinheiro"
+  → Mais difícil desambiguar!
+
+Pré-treinamento do BERT — dois objetivos:
+
+  JOGO 1 — Masked Language Model (MLM):
+    Texto original:   "O cachorro late para o carteiro"
+    Texto mascarado:  "O [MASK] late para o carteiro"
+    BERT aprende:     [MASK] = "cachorro"
+
+    15% das palavras são mascaradas em cada frase.
+    O modelo aprende a usar contexto de ambos os lados.
+
+  JOGO 2 — Next Sentence Prediction (NSP):
+    Frase A: "Comprei um livro na livraria."
+    Frase B: "Ele estava na lista dos mais vendidos." → SIM ✅
+    Frase B: "O céu está azul hoje."                 → NÃO ❌
+
+    O modelo aprende relações lógicas entre frases.
+
+Corpus de treinamento:
+  → Wikipedia em inglês (~2,5 bilhões de palavras)
+  → BookCorpus (~800 milhões de palavras de livros)
+
+Para que o BERT é melhor:
+  ✅ Classificação de texto (sentimento, intenção)
+  ✅ Reconhecimento de entidades (NER)
+  ✅ Perguntas e respostas (extração de resposta)
+  ✅ Inferência textual (implicação entre frases)
+  ❌ Geração de texto (não é sua especialidade)
+
+Tarefas via pipeline() do Hugging Face:
+  pipeline('sentiment-analysis')
+  pipeline('fill-mask')
+  pipeline('question-answering')
+  pipeline('ner')
+  pipeline('zero-shot-classification')
+
+
+------------------------------------------------------------------
+3. GPT — GENERATIVE PRE-TRAINED TRANSFORMER
+------------------------------------------------------------------
+
+Criado pela OpenAI em 2018. Série: GPT-1, GPT-2, GPT-3, GPT-4.
+
+Diferença fundamental do BERT:
+  BERT: Encoder bidirecional → COMPREENSÃO
+  GPT:  Decoder unidirecional → GERAÇÃO
+
+Como o GPT processa texto:
+  Lê SOMENTE da esquerda para a direita (→)
+  Aprende a prever qual é a PRÓXIMA palavra:
+
+  "O gato"          → GPT prevê: "dorme" (probabilidade alta)
+  "O gato dorme"    → GPT prevê: "no" (probabilidade alta)
+  "O gato dorme no" → GPT prevê: "sofá" (probabilidade alta)
+
+  Parece simples, mas ao fazer isso com bilhões de frases,
+  o modelo aprende gramática, fatos, lógica e até humor!
+
+Temperatura (criatividade do GPT):
+  temperature baixa (0.1-0.3):
+    → Muito previsível, conservador
+    → Sempre escolhe a palavra mais provável
+    → Bom para: FAQs, documentação técnica
+
+  temperature média (0.7-1.0):
+    → Equilibrado entre criatividade e coerência
+    → Bom para: chatbots, assistentes gerais
+
+  temperature alta (1.2-2.0):
+    → Muito criativo, pode ser incoerente
+    → Bom para: brainstorming, poesia experimental
+
+Evolução da família GPT:
+  GPT-1 (2018): primeiro GPT, 117M parâmetros
+  GPT-2 (2019): 1,5B parâmetros, texto tão bom que a OpenAI
+                hesitou em publicar (risco de fake news)
+  GPT-3 (2020): 175B parâmetros, few-shot learning
+  ChatGPT (2022): RLHF — treinado para ser útil e seguro
+  GPT-4 (2023): multimodal, entende imagens e texto
+
+Para que o GPT é melhor:
+  ✅ Geração de texto (completar frases, escrever)
+  ✅ Chatbots e assistentes conversacionais
+  ✅ Código (GitHub Copilot usa GPT)
+  ✅ Resumos criativos
+  ❌ Extração precisa de informação (BERT é melhor)
+
+Uso via pipeline():
+  gerador = pipeline('text-generation', model='gpt2')
+  gerador("The future of AI is",
+          max_new_tokens=30,
+          temperature=0.8,
+          do_sample=True)
+
+
+------------------------------------------------------------------
+4. FINE-TUNING — ADAPTANDO O MODELO PARA SUA TAREFA
+------------------------------------------------------------------
+
+Fine-tuning é o processo de pegar um modelo pré-treinado e
+continuar treinando com seus próprios dados específicos.
+
+Analogia:
+  BERT já sabe "entender inglês" (pré-treino).
+  Fine-tuning ensina a classificar avaliações de filmes.
+  Com 1.000 exemplos e 10 minutos, você tem um especialista!
+
+Por que funciona com tão poucos exemplos?
+  O modelo já aprendeu a semântica da linguagem.
+  No fine-tuning, ele só aprende a APLICAR esse conhecimento.
+
+  É como ensinar um chef a fazer um prato específico:
+  ele já sabe cozinhar, só precisa aprender a receita.
+
+Estratégias de fine-tuning:
+  1. Fine-tuning completo: atualiza todos os pesos
+     → Melhor performance, mas requer mais dados e tempo
+
+  2. Fine-tuning das últimas camadas: congela as primeiras
+     → Mais rápido, bom quando o domínio é similar
+
+  3. LoRA (Low-Rank Adaptation): adiciona mini-redes
+     → Muito eficiente, ideal para modelos muito grandes
+
+  4. Prompt Engineering: não treina, usa exemplos no prompt
+     → Sem custo, funciona para tarefas simples
+
+Taxa de aprendizado para fine-tuning:
+  Usar learning_rate = 2e-5 a 5e-5 (muito menor que treino normal)
+  Taxas altas podem "destruir" o conhecimento do pré-treino.
+
+Número de épocas:
+  3 a 5 épocas geralmente são suficientes para fine-tuning.
+  Mais épocas podem causar overfitting nos seus dados.
+
+
+------------------------------------------------------------------
+5. BERTIMBAU — BERT PARA PORTUGUÊS BRASILEIRO
+------------------------------------------------------------------
+
+Desenvolvido pelo NeuralMind (UNICAMP) em 2020.
+Publicado na conferência BRACIS 2020.
+
+Dados de treinamento:
+  Corpus brWaC (Brazilian Web as Corpus):
+  → 2,68 bilhões de palavras em Português Brasileiro
+  → Coletado de sites brasileiros (jornais, blogs, fóruns)
+  → Cobre linguagem formal e informal
+  → Inclui gírias e expressões idiomáticas do PT-BR
+
+Diferença na tokenização:
+  Palavra: "processamento"
+  BERT inglês: ["process", "##amento"]     → 2 tokens
+  BERTimbau:   ["processamento"]            → 1 token ✅
+
+  Palavra: "comunicação"
+  BERT inglês: ["co", "##mu", "##nica", "##ção"] → 4 tokens
+  BERTimbau:   ["comunicação"]                     → 1 token ✅
+
+Menos tokens = mais eficiente = representação mais fiel ao PT.
+
+Modelos específicos para Português:
+  Tarefa                | Modelo
+  ----------------------|--------------------------------
+  Fill-mask             | neuralmind/bert-base-portuguese-cased
+  Sentimento            | lxyuan/distilbert-multilingual-sentiments
+  NER                   | Davlan/distilbert-multilingual-ner-hrl
+  Tradução PT→EN        | Helsinki-NLP/opus-mt-pt-en
+  Tradução EN→PT        | Helsinki-NLP/opus-mt-tc-big-en-pt
+  Perguntas/respostas   | pierreguillou/bert-base-cased-squad-PT
+
+
+------------------------------------------------------------------
+6. VARIANTES EFICIENTES DO BERT
+------------------------------------------------------------------
+
+DistilBERT:
+  → 40% menor que BERT-base
+  → 60% mais rápido na inferência
+  → Mantém 97% da performance do BERT
+  → Ideal para aplicações com restrição de recursos
+
+RoBERTa:
+  → "Robustly Optimized BERT" — Facebook, 2019
+  → Remove o objetivo NSP (mostrou-se desnecessário)
+  → Usa mais dados e mais passos de treinamento
+  → Geralmente supera BERT em benchmarks
+
+ALBERT:
+  → Parâmetros compartilhados entre camadas
+  → Muito menor mas mantém performance similar
+  → Ideal para dispositivos com memória limitada
+
+DeBERTa:
+  → Melhoria no Positional Encoding
+  → Melhor performance em tarefas de inferência textual
+  → Estado da arte em vários benchmarks como GLUE
+
+
+------------------------------------------------------------------
+7. PIPELINE COMPLETO COM HUGGING FACE
+------------------------------------------------------------------
+
+Exemplo de sistema de análise de reviews em Português:
+
+  from transformers import pipeline
+
+  # Análise de sentimento em PT
+  sentimento = pipeline(
+      'sentiment-analysis',
+      model='lxyuan/distilbert-base-multilingual-cased-sentiments-student',
+      top_k=None
+  )
+
+  # Reconhecimento de entidades
+  ner = pipeline(
+      'ner',
+      model='Davlan/distilbert-base-multilingual-cased-ner-hrl',
+      aggregation_strategy='simple'
+  )
+
+  texto = "A Petrobras lançou um excelente produto no Rio de Janeiro."
+
+  # Sentimento
+  resultado_sent = sentimento(texto)[0]
+  melhor = max(resultado_sent, key=lambda x: x['score'])
+  print(f"Sentimento: {melhor['label']} ({melhor['score']:.0%})")
+
+  # Entidades
+  entidades = ner(texto)
+  for ent in entidades:
+      print(f"{ent['word']} → {ent['entity_group']} ({ent['score']:.0%})")
+
+
+------------------------------------------------------------------
+8. RESUMO — QUANDO USAR CADA MODELO
+------------------------------------------------------------------
+
+  Tarefa              | Melhor modelo     | Pipeline
+  --------------------|-------------------|-------------------
+  Entender texto PT   | BERTimbau         | fill-mask
+  Sentimento PT       | DistilBERT multi  | sentiment-analysis
+  Perguntas PT        | BERT-squad-PT     | question-answering
+  NER multilíngue     | DistilBERT NER    | ner
+  Gerar texto EN      | GPT-2             | text-generation
+  Resumir (EN)        | BART-CNN          | summarization
+  Traduzir PT→EN      | Helsinki opus-mt  | translation
+  Classificar livre   | BART-MNLI         | zero-shot-classification
+
+
+------------------------------------------------------------------
+FIM DA AULA 4
+Próxima aula: Aplicações Multimodais (texto + imagem)
+------------------------------------------------------------------

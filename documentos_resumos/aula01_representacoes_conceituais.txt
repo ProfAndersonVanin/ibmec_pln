@@ -1,0 +1,202 @@
+================================================================
+CURSO DE PLN — AULA 1
+Representações Conceituais: Ontologias, WordNet e BabelNet
+================================================================
+
+------------------------------------------------------------------
+1. O QUE SÃO REPRESENTAÇÕES CONCEITUAIS
+------------------------------------------------------------------
+
+Representações conceituais são formas estruturadas de organizar
+o conhecimento sobre a linguagem. Em vez de tratar as palavras
+como sequências de letras, elas capturam o SIGNIFICADO por trás
+delas e as relações entre diferentes conceitos.
+
+Exemplo simples:
+  "cachorro" não é apenas a palavra c-a-c-h-o-r-r-o.
+  É um animal doméstico, um tipo de mamífero, tem relação
+  com "cão", "vira-lata", "labrador", é diferente de "gato".
+
+Essa teia de relações é o que as representações conceituais
+buscam capturar de forma computacional.
+
+Por que isso importa em PLN?
+  A palavra "banco" pode significar assento ou instituição
+  financeira. Sem representação do contexto e do significado,
+  um computador não consegue decidir qual é o correto.
+
+
+------------------------------------------------------------------
+2. ONTOLOGIAS
+------------------------------------------------------------------
+
+Uma ontologia é um sistema formal que define conceitos e as
+relações entre eles dentro de um domínio de conhecimento.
+
+Estrutura básica de uma ontologia:
+  - Conceitos (classes): entidades do domínio
+  - Instâncias: exemplos concretos de um conceito
+  - Relações: como os conceitos se conectam
+  - Axiomas: regras que governam o domínio
+
+Exemplo de ontologia de animais:
+  Animal
+  ├── Mamífero
+  │   ├── Canídeo
+  │   │   ├── Cachorro  ← instância: "Rex"
+  │   │   └── Lobo
+  │   └── Felino
+  │       ├── Gato
+  │       └── Leão
+  └── Réptil
+
+Tipos de relações em ontologias:
+  - É-um (is-a): cachorro É-UM mamífero
+  - Parte-de (part-of): roda É-PARTE-DE carro
+  - Tem-propriedade: cachorro TEM-PROPRIEDADE pelo
+  - Causa: infecção CAUSA febre
+
+Ontologias são usadas em sistemas de saúde, direito, biologia
+e qualquer domínio que precisa de conhecimento estruturado.
+
+
+------------------------------------------------------------------
+3. WORDNET
+------------------------------------------------------------------
+
+O WordNet é um banco léxico do inglês desenvolvido na
+Universidade de Princeton desde 1985. É uma das principais
+fontes de conhecimento léxico para PLN.
+
+Conceito fundamental — Synsets:
+  Um synset (conjunto de sinônimos) é um grupo de palavras
+  com o mesmo significado em um contexto específico.
+
+  Exemplo: o conceito "veículo automotor de 4 rodas" é
+  representado pelo synset {car, auto, automobile, machine}
+
+  A palavra "car" SOZINHA pode ter vários synsets:
+    car.n.01 → veículo automotor
+    car.n.02 → vagão de trem
+    car.n.03 → cabine de elevador
+
+Relações lexicais no WordNet:
+  - Sinonímia: palavras no mesmo synset (carro, automóvel)
+  - Hiponímia: "é um tipo de" (cachorro É-TIPO-DE animal)
+  - Hiperonímia: "é mais geral que" (animal É-MAIS-GERAL-QUE cachorro)
+  - Meronímia: "é parte de" (roda É-PARTE-DE carro)
+  - Holonímia: "tem como parte" (carro TEM-PARTE roda)
+  - Antonímia: opostos (quente ↔ frio)
+
+Acesso via NLTK em Python:
+  from nltk.corpus import wordnet as wn
+  synsets = wn.synsets('bank')
+  # Retorna todos os sentidos de 'bank'
+
+  for syn in synsets:
+      print(syn.name(), '→', syn.definition())
+  # bank.n.01 → financial institution
+  # bank.n.02 → sloping land beside a body of water
+
+Similaridade semântica:
+  O WordNet permite calcular o quão próximos dois conceitos
+  são na hierarquia. "Cachorro" e "lobo" são mais próximos
+  entre si do que "cachorro" e "peixe".
+
+
+------------------------------------------------------------------
+4. BABELNET
+------------------------------------------------------------------
+
+O BabelNet é uma versão multilíngue e muito maior do WordNet,
+desenvolvida pela Sapienza Universidade de Roma. Combina o
+WordNet com dados da Wikipedia e do Wiktionary.
+
+Características principais:
+  - Cobre mais de 500 idiomas
+  - Mais de 20 milhões de entradas (synsets)
+  - Integra conhecimento enciclopédico (Wikipedia)
+  - API disponível para acesso programático
+
+Diferenças em relação ao WordNet:
+  WordNet: foco em inglês, relações lexicais puras
+  BabelNet: multilíngue, inclui entidades nomeadas,
+            integra conhecimento enciclopédico
+
+Exemplo de synset multilíngue no BabelNet:
+  Conceito: "banco financeiro"
+  - Inglês: bank, financial institution
+  - Português: banco, instituição financeira
+  - Espanhol: banco, entidad financiera
+  - Francês: banque
+  Todos ligados ao mesmo synset!
+
+Acesso via API (requer chave gratuita):
+  import requests
+  url = 'https://babelnet.io/v9/getSynset'
+  params = {'id': 'bn:00008364n', 'key': 'SUA_CHAVE'}
+  resposta = requests.get(url, params=params)
+
+
+------------------------------------------------------------------
+5. DESAMBIGUAÇÃO DE SENTIDO DE PALAVRAS (WSD)
+------------------------------------------------------------------
+
+Word Sense Disambiguation (WSD) é a tarefa de determinar qual
+sentido de uma palavra ambígua é o correto em um dado contexto.
+
+Exemplo:
+  "Fui ao banco sacar dinheiro"     → banco financeiro
+  "Sentei no banco da praça"        → banco (assento)
+  "O banco do rio está alto"        → banco (margem)
+
+Abordagens para WSD:
+  1. Baseada em conhecimento: usa WordNet para verificar qual
+     sentido é mais compatível com o contexto
+  2. Supervisionada: treina um classificador com exemplos
+     rotulados de cada sentido
+  3. Não-supervisionada: agrupa contextos similares sem rótulos
+
+Com modelos Transformer como o BERT, a desambiguação é feita
+implicitamente: o embedding contextual de "banco" é diferente
+dependendo das palavras ao redor.
+
+
+------------------------------------------------------------------
+6. APLICAÇÕES PRÁTICAS
+------------------------------------------------------------------
+
+Onde representações conceituais são usadas no mundo real:
+
+  - Sistemas de busca: entender que "carro" e "automóvel"
+    são a mesma coisa ao buscar resultados
+  - Chatbots médicos: ontologias médicas como SNOMED CT
+    garantem que "hipertensão" e "pressão alta" sejam tratados
+    como o mesmo conceito
+  - Tradução automática: WordNet ajuda a escolher a tradução
+    correta de palavras ambíguas
+  - Extração de informação: identificar relações entre entidades
+    em textos como artigos científicos e notícias
+  - Sistemas de recomendação: entender que um usuário que gosta
+    de "jazz" provavelmente gosta de "blues" (conceitos próximos)
+
+
+------------------------------------------------------------------
+7. RESUMO DOS CONCEITOS PRINCIPAIS
+------------------------------------------------------------------
+
+  Ontologia     → sistema formal de conceitos e relações
+  Synset        → grupo de palavras com o mesmo significado
+  WordNet       → banco léxico do inglês com synsets
+  BabelNet      → WordNet multilíngue com dados enciclopédicos
+  Hiponímia     → "é um tipo de" (cachorro → animal)
+  Hiperonímia   → "é mais geral que" (animal → cachorro)
+  Meronímia     → "é parte de" (roda → carro)
+  WSD           → tarefa de desambiguar palavras polissêmicas
+  Polissemia    → uma palavra com múltiplos sentidos
+
+
+------------------------------------------------------------------
+FIM DA AULA 1
+Próxima aula: Tecnologias e Ferramentas de PLN
+------------------------------------------------------------------

@@ -1,0 +1,304 @@
+================================================================
+CURSO DE PLN — AULA 2
+Tecnologias e Ferramentas: NLTK, spaCy, Hugging Face,
+OpenCV e TensorFlow/Keras
+================================================================
+
+------------------------------------------------------------------
+1. O PIPELINE DE PLN
+------------------------------------------------------------------
+
+Um pipeline de PLN é uma sequência de etapas que transforma
+texto bruto em representações numéricas úteis para modelos.
+
+Fluxo básico:
+  Texto bruto
+    ↓ Tokenização       → divide em palavras/tokens
+    ↓ Normalização      → lowercase, remoção de pontuação
+    ↓ Remoção stopwords → remove palavras sem valor semântico
+    ↓ Lematização       → reduz palavras à forma base
+    ↓ Vetorização       → converte em números
+    ↓ Modelo de ML
+
+Cada etapa afeta a qualidade do resultado final. Pular a
+remoção de stopwords pode fazer o modelo focar em palavras
+sem significado como "o", "a", "de", "que".
+
+
+------------------------------------------------------------------
+2. NLTK — Natural Language Toolkit
+------------------------------------------------------------------
+
+O NLTK é a biblioteca mais antiga de PLN em Python, criada em
+2001 pela Universidade da Pensilvânia. É ideal para aprendizado
+e prototipagem rápida.
+
+Instalação e download dos recursos:
+  import nltk
+  nltk.download('punkt')          # tokenizador
+  nltk.download('stopwords')      # listas de stopwords
+  nltk.download('rslp')           # stemmer para português
+  nltk.download('wordnet')        # banco léxico WordNet
+
+Tokenização com NLTK:
+  from nltk.tokenize import word_tokenize, sent_tokenize
+
+  texto = "O gato dorme. O cachorro corre."
+  tokens = word_tokenize(texto, language='portuguese')
+  # ['O', 'gato', 'dorme', '.', 'O', 'cachorro', 'corre', '.']
+
+  sentencas = sent_tokenize(texto, language='portuguese')
+  # ['O gato dorme.', 'O cachorro corre.']
+
+Remoção de Stopwords:
+  from nltk.corpus import stopwords
+  stops = set(stopwords.words('portuguese'))
+  # {'o', 'a', 'de', 'que', 'e', 'do', 'da', ...}
+
+  tokens_limpos = [t for t in tokens if t.lower() not in stops]
+
+Stemming com RSLP (para Português):
+  from nltk.stem import RSLPStemmer
+  stemmer = RSLPStemmer()
+  stemmer.stem('comunicação')   # → 'comunic'
+  stemmer.stem('correndo')      # → 'corr'
+  # Atenção: o resultado pode não ser uma palavra real!
+
+Frequência de Palavras:
+  from nltk import FreqDist
+  freq = FreqDist(tokens)
+  freq.most_common(5)   # 5 palavras mais frequentes
+
+TF-IDF com NLTK + sklearn:
+  TF-IDF pondera palavras pela frequência no documento (TF)
+  dividida pela raridade no corpus (IDF).
+  Palavras comuns em todos os textos têm peso baixo.
+  Palavras específicas de um texto têm peso alto.
+
+
+------------------------------------------------------------------
+3. SPACY — Processamento Industrial de PLN
+------------------------------------------------------------------
+
+O spaCy é uma biblioteca moderna, eficiente e pronta para
+produção. Usa modelos neurais para todas as suas tarefas.
+
+Instalação do modelo em Português:
+  pip install spacy
+  python -m spacy download pt_core_news_sm
+
+Pipeline integrado do spaCy:
+  import spacy
+  nlp = spacy.load('pt_core_news_sm')
+  doc = nlp("Pedro comprou um livro na livraria.")
+
+  Ao executar nlp(), todas as etapas rodam automaticamente:
+  tokenizer → tagger → parser → ner → ...
+
+Atributos dos tokens:
+  Para cada token em doc:
+    token.text       → texto original ("Pedro")
+    token.lemma_     → forma base ("pedro")
+    token.pos_       → categoria gramatical ("PROPN")
+    token.dep_       → relação sintática ("nsubj")
+    token.is_stop    → é stopword? (False)
+    token.ent_type_  → tipo de entidade ("PER")
+
+Categorias gramaticais (POS tags) comuns:
+  NOUN  → substantivo (livro, casa)
+  VERB  → verbo (correr, comprar)
+  ADJ   → adjetivo (bonito, rápido)
+  ADV   → advérbio (rapidamente)
+  PROPN → nome próprio (Pedro, Brasil)
+  DET   → determinante (o, um, este)
+
+Reconhecimento de Entidades (NER):
+  doc = nlp("A Petrobras investiu R$5 bilhões em São Paulo.")
+
+  for ent in doc.ents:
+      print(ent.text, ent.label_)
+  # Petrobras  ORG
+  # R$5 bilhões MONEY
+  # São Paulo  GPE
+
+Análise de Dependência Sintática:
+  A árvore de dependências mostra como as palavras da frase
+  se relacionam gramaticalmente. "comprou" é o verbo raiz,
+  "Pedro" é o sujeito (nsubj), "livro" é o objeto (obj).
+
+Diferença spaCy vs NLTK:
+  NLTK → bibliotecas separadas, mais didático, mais lento
+  spaCy → pipeline integrado, mais rápido, mais preciso
+
+
+------------------------------------------------------------------
+4. HUGGING FACE TRANSFORMERS
+------------------------------------------------------------------
+
+O Hugging Face é uma plataforma que disponibiliza milhares de
+modelos pré-treinados de PLN, visão computacional e multimodais.
+
+A função pipeline() é a porta de entrada mais simples:
+  from transformers import pipeline
+
+  # Análise de sentimento
+  analisador = pipeline('sentiment-analysis')
+  analisador("I love this!")
+  # [{'label': 'POSITIVE', 'score': 0.9998}]
+
+  # Completar palavra mascarada
+  bert = pipeline('fill-mask', model='bert-base-uncased')
+  bert("Paris is the [MASK] of France.")
+  # [{'token_str': 'capital', 'score': 0.99}]
+
+  # Perguntas e respostas
+  qa = pipeline('question-answering')
+  qa(question="Who created BERT?",
+     context="BERT was created by Google in 2018.")
+
+  # Sumarização
+  resumidor = pipeline('summarization', model='facebook/bart-large-cnn')
+  resumidor(texto_longo, max_length=60, min_length=20)
+
+  # Tradução
+  tradutor = pipeline('translation', model='Helsinki-NLP/opus-mt-pt-en')
+  tradutor("O Brasil é lindo.")
+
+  # Zero-shot classification
+  classificador = pipeline('zero-shot-classification',
+                           model='facebook/bart-large-mnli')
+  classificador(texto, candidate_labels=['esporte', 'política', 'tecnologia'])
+
+Modelos populares por tarefa:
+  Tarefa               | Modelo recomendado
+  ---------------------|------------------------------------------
+  Sentimento (PT)      | lxyuan/distilbert-multilingual-...
+  Fill-mask (PT)       | neuralmind/bert-base-portuguese-cased
+  QA (PT)              | pierreguillou/bert-base-cased-squad-PT
+  Sumarização          | facebook/bart-large-cnn
+  Tradução PT→EN       | Helsinki-NLP/opus-mt-pt-en
+  Tradução EN→PT       | Helsinki-NLP/opus-mt-tc-big-en-pt
+  NER multilíngue      | Davlan/distilbert-multilingual-ner-hrl
+
+
+------------------------------------------------------------------
+5. TENSORFLOW E KERAS
+------------------------------------------------------------------
+
+O TensorFlow é o framework de deep learning do Google. O Keras
+é sua API de alto nível que facilita a criação de redes neurais.
+
+Construindo um classificador de texto simples:
+  from tensorflow import keras
+
+  # 1. Vetorizar o texto
+  vetorizador = keras.layers.TextVectorization(
+      max_tokens=5000,
+      output_sequence_length=50
+  )
+  vetorizador.adapt(textos_de_treino)
+
+  # 2. Construir o modelo
+  modelo = keras.Sequential([
+      vetorizador,
+      keras.layers.Embedding(5000, 16),
+      keras.layers.GlobalAveragePooling1D(),
+      keras.layers.Dense(16, activation='relu'),
+      keras.layers.Dense(1, activation='sigmoid'),
+  ])
+
+  # 3. Compilar e treinar
+  modelo.compile(optimizer='adam',
+                 loss='binary_crossentropy',
+                 metrics=['accuracy'])
+  modelo.fit(X_treino, y_treino, epochs=10)
+
+Camadas mais usadas em PLN:
+  Embedding          → converte IDs em vetores densos
+  SimpleRNN          → rede recorrente simples
+  LSTM               → memória de longo prazo
+  GRU                → versão compacta do LSTM
+  Bidirectional      → processa em ambas as direções
+  MultiHeadAttention → mecanismo de atenção do Transformer
+  GlobalAvgPooling1D → agrega sequência em um único vetor
+  Dense              → camada totalmente conectada
+
+
+------------------------------------------------------------------
+6. OPENCV PARA PLN MULTIMODAL
+------------------------------------------------------------------
+
+O OpenCV é uma biblioteca de visão computacional. Ela é usada
+no contexto de PLN multimodal para pré-processar imagens antes
+de enviá-las a modelos de linguagem-visão.
+
+Pontos importantes:
+  - OpenCV usa formato BGR (não RGB como a maioria dos modelos)
+  - Pixels têm valores inteiros de 0 a 255
+  - Modelos de DL esperam float de 0.0 a 1.0
+
+Pipeline padrão de pré-processamento:
+  import cv2
+  import numpy as np
+
+  # Ler imagem
+  img = cv2.imread('imagem.jpg')           # formato BGR
+
+  # Converter BGR → RGB
+  img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+  # Redimensionar para o tamanho esperado pelo modelo
+  img_224 = cv2.resize(img_rgb, (224, 224))
+
+  # Normalizar para [0.0, 1.0]
+  img_norm = img_224.astype(np.float32) / 255.0
+
+  # Converter para PIL (necessário para BLIP, CLIP)
+  from PIL import Image
+  img_pil = Image.fromarray(img_rgb)
+
+
+------------------------------------------------------------------
+7. BERTIMBAU — BERT PARA PORTUGUÊS
+------------------------------------------------------------------
+
+O BERTimbau é o modelo BERT treinado especificamente para o
+Português Brasileiro pelo grupo NeuralMind da UNICAMP em 2020.
+
+Por que BERTimbau e não BERT original?
+  O BERT original foi treinado em inglês. Palavras em Português
+  com acentos são divididas em múltiplos tokens:
+    BERT original:   "comunicação" → ["co", "##mu", "##nica", "##ção"]
+    BERTimbau:       "comunicação" → ["comunicação"]
+
+  Menos tokens = mais eficiente = representação mais precisa.
+
+Dados de treinamento:
+  Corpus brWaC: 2,68 bilhões de palavras coletadas de sites
+  brasileiros, cobrindo jornalismo, blogs, fóruns e academia.
+
+Acesso via Hugging Face:
+  bert_pt = pipeline('fill-mask',
+                     model='neuralmind/bert-base-portuguese-cased')
+  bert_pt('O [MASK] é o maior país da América do Sul.')
+  # Brasil (alta confiança)
+
+
+------------------------------------------------------------------
+8. RESUMO COMPARATIVO DAS FERRAMENTAS
+------------------------------------------------------------------
+
+  Ferramenta    | Uso principal              | Nível
+  --------------|----------------------------|----------
+  NLTK          | Ensino, prototipagem       | Iniciante
+  spaCy         | Produção, NER, parsing     | Intermediário
+  Hugging Face  | Modelos pré-treinados      | Todos
+  TensorFlow    | Treinar redes neurais      | Intermediário
+  OpenCV        | Pré-processar imagens      | Intermediário
+  BERTimbau     | PLN em Português           | Iniciante
+
+
+------------------------------------------------------------------
+FIM DA AULA 2
+Próxima aula: Arquiteturas para PLN (RNN, LSTM, GRU, Transformer)
+------------------------------------------------------------------

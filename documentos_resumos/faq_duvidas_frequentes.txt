@@ -1,0 +1,336 @@
+================================================================
+CURSO DE PLN — FAQ
+Perguntas e Respostas Frequentes dos Alunos
+================================================================
+
+------------------------------------------------------------------
+SEÇÃO 1 — DÚVIDAS GERAIS SOBRE PLN
+------------------------------------------------------------------
+
+P: O que é PLN e onde ele é usado no dia a dia?
+R: PLN é a área da IA que permite computadores entenderem e
+   gerarem linguagem humana. Você já usa PLN ao:
+   → Usar o corretor automático do celular
+   → Fazer busca no Google com linguagem natural
+   → Interagir com o ChatGPT ou Siri
+   → Usar o Google Tradutor
+   → Pedir recomendações na Netflix (análise de texto)
+
+
+P: Qual é a diferença entre PLN e linguística computacional?
+R: Linguística computacional é mais teórica e foca em modelar
+   formalmente as estruturas da linguagem. PLN é mais aplicado
+   e foca em resolver problemas práticos. Na prática, as duas
+   áreas se sobrepõem muito e os termos são usados de forma
+   intercambiável no mercado de trabalho.
+
+
+P: Preciso saber matemática avançada para aprender PLN?
+R: Para usar modelos pré-treinados via Hugging Face pipeline(),
+   não precisa. Para entender como os modelos funcionam
+   internamente, é útil conhecer álgebra linear (vetores,
+   matrizes), cálculo básico (derivadas para gradiente) e
+   estatística (probabilidade, distribuições). Mas você pode
+   avançar bastante antes de precisar disso!
+
+
+------------------------------------------------------------------
+SEÇÃO 2 — DÚVIDAS SOBRE TOKENIZAÇÃO E PRÉ-PROCESSAMENTO
+------------------------------------------------------------------
+
+P: Qual é a diferença entre stemming e lematização?
+R: Stemming: remove sufixos de forma heurística. O resultado
+   pode não ser uma palavra real.
+     "correndo" → "corr" (não é uma palavra!)
+   
+   Lematização: retorna a forma base gramaticalmente correta.
+     "correndo" → "correr" (verbo no infinitivo)
+   
+   Quando usar cada um:
+     Stemming → rápido, sem necessidade de dicionário, bom para
+                recuperação de informação onde precisão não é crítica
+     Lematização → mais lento, preciso, bom para tarefas que
+                   exigem interpretação semântica correta
+
+
+P: O que são stopwords e devo sempre removê-las?
+R: Stopwords são palavras de alta frequência e baixo valor
+   semântico: "o", "a", "de", "que", "é"...
+   
+   Remover é útil quando:
+   → Classificar texto por tópico (as palavras do tema importam)
+   → Reduzir dimensionalidade do vocabulário
+   
+   NÃO remover é melhor quando:
+   → Análise de sentimento (negação como "não" é stopword!)
+   → Modelos contextuais como BERT (eles processam tudo)
+   → Tradução (cada palavra contribui para o sentido)
+
+
+P: Por que o BERT divide palavras em pedaços (subpalavras)?
+R: O vocabulário de qualquer língua é enorme e sempre cresce
+   com neologismos, nomes próprios e palavras técnicas.
+   Se o modelo só conhece palavras completas, palavras novas
+   ficam como [UNK] (desconhecido).
+   
+   Com subpalavras (WordPiece), o modelo divide palavras
+   desconhecidas em partes conhecidas:
+     "chatgpt" → ["chat", "##g", "##pt"]
+   
+   Isso garante que o modelo SEMPRE consegue representar
+   qualquer texto, mesmo com palavras novas.
+
+
+------------------------------------------------------------------
+SEÇÃO 3 — DÚVIDAS SOBRE RNN, LSTM E TRANSFORMER
+------------------------------------------------------------------
+
+P: Por que a LSTM é melhor que a RNN simples?
+R: A RNN simples tem um único "bloco de notas" que é atualizado
+   a cada passo. Com frases longas, o que foi escrito no começo
+   vai sendo apagado para dar lugar ao novo.
+   
+   A LSTM tem dois sistemas de memória:
+   → Cell state: memória de longo prazo, mais resistente a ser
+     apagada. Informações importantes ficam intactas por muitos passos.
+   → Hidden state: memória de curto prazo, o que está sendo
+     usado agora.
+   
+   Três portões (forget, input, output) decidem o que guardar,
+   o que apagar e o que usar — todos aprendidos pelo modelo.
+
+
+P: Se o Transformer é melhor, por que ainda usar LSTM?
+R: O Transformer exige muito mais recursos computacionais.
+   Para datasets pequenos, dispositivos com poucos recursos,
+   ou aplicações em tempo real em hardware limitado, a LSTM
+   pode ser mais prática.
+   
+   Regra geral:
+   → Dataset pequeno (<10k exemplos): LSTM ou GRU
+   → Dataset médio (10k-100k): LSTM bidirecional
+   → Dataset grande (>100k) + GPU disponível: Transformer
+
+
+P: O que é o "return_sequences=True" no Keras?
+R: O parâmetro controla o que a camada RNN/LSTM retorna:
+   
+   return_sequences=False (padrão):
+   → Retorna apenas o último hidden state
+   → Shape: (batch_size, hidden_units)
+   → Use quando quer classificar a frase inteira
+   
+   return_sequences=True:
+   → Retorna o hidden state de CADA posição
+   → Shape: (batch_size, seq_len, hidden_units)
+   → Use quando quer emilhar duas camadas recorrentes
+   
+   Exemplo de LSTM empilhada:
+     LSTM(32, return_sequences=True)  ← primeira camada
+     LSTM(32)                         ← segunda camada
+
+
+P: O que é o Positional Encoding e por que o Transformer precisa?
+R: O Transformer processa todos os tokens em paralelo — ele não
+   tem noção natural de qual palavra vem antes ou depois.
+   "banco sacar" e "sacar banco" resultariam em embeddings
+   IGUAIS sem Positional Encoding!
+   
+   O PE adiciona um vetor de posição ao embedding de cada token.
+   Esse vetor usa funções sen e cos para criar um padrão único
+   para cada posição. Assim o modelo sabe que "banco" está na
+   posição 3 e "sacar" na posição 4.
+
+
+------------------------------------------------------------------
+SEÇÃO 4 — DÚVIDAS SOBRE BERT, GPT E MODELOS PRÉ-TREINADOS
+------------------------------------------------------------------
+
+P: Qual a diferença entre BERT e GPT?
+R: A diferença está em como cada um processa o texto:
+   
+   BERT (Encoder bidirecional):
+   → Lê nos dois sentidos ao mesmo tempo (← e →)
+   → Ao analisar "banco", já viu TODA a frase
+   → Ideal para: entender e classificar texto
+   → Tarefas: sentimento, NER, QA, classificação
+   
+   GPT (Decoder unidirecional):
+   → Lê só da esquerda para a direita (→)
+   → Treinado para PREVER a próxima palavra
+   → Ideal para: gerar e completar texto
+   → Tarefas: chatbots, completar código, escrita criativa
+
+
+P: O que é fine-tuning e quando devo usá-lo?
+R: Fine-tuning é continuar o treinamento de um modelo pré-treinado
+   com seus próprios dados específicos.
+   
+   Use fine-tuning quando:
+   → O domínio é muito específico (médico, jurídico, técnico)
+   → O pipeline() padrão não dá resultados suficientemente bons
+   → Você tem pelo menos 500-1000 exemplos rotulados
+   
+   Não use fine-tuning (use pipeline() diretamente) quando:
+   → O domínio é geral e os modelos padrão já funcionam bem
+   → Você tem poucos exemplos (< 100)
+   → Não tem GPU disponível
+
+
+P: Por que usar BERTimbau em vez do BERT original para Português?
+R: Três razões principais:
+   
+   1. Tokenização: o BERT inglês divide palavras em muitos
+      pedaços por não conhecer Português.
+      "comunicação" → 4 tokens (BERT) vs 1 token (BERTimbau)
+   
+   2. Vocabulário: o BERTimbau conhece palavras com acento,
+      gírias brasileiras e expressões idiomáticas do PT-BR.
+   
+   3. Performance: o BERTimbau sistematicamente supera o BERT
+      original em todas as tarefas em Português.
+
+
+P: Para análise de sentimento em Português, qual modelo usar?
+R: Para três classes (positivo, neutro, negativo) em PT:
+   lxyuan/distilbert-base-multilingual-cased-sentiments-student
+   
+   Como usar:
+     analisador = pipeline(
+         'sentiment-analysis',
+         model='lxyuan/distilbert-base-multilingual-cased-sentiments-student',
+         top_k=None  # retorna todas as classes
+     )
+     scores = analisador("Adorei o produto!")[0]
+     melhor = max(scores, key=lambda x: x['score'])
+     print(melhor['label'], melhor['score'])
+
+
+------------------------------------------------------------------
+SEÇÃO 5 — DÚVIDAS SOBRE APLICAÇÕES
+------------------------------------------------------------------
+
+P: O resumidor BART retorna um erro TypeError. Como resolver?
+R: O resumidor retorna uma LISTA de dicionários, não uma string.
+   
+   ERRADO:
+     resumo = resumidor(texto)
+     analisador(resumo)  ← TypeError!
+   
+   CORRETO:
+     resumo = resumidor(texto)[0]['summary_text']
+     analisador(resumo)  ← funciona!
+   
+   Sempre acesse [0]['summary_text'] para extrair o texto.
+
+
+P: Por que meu modelo de sentimento funciona em inglês mas
+   dá resultados errados em Português?
+R: O modelo padrão do pipeline('sentiment-analysis') é o
+   distilbert-base-uncased-finetuned-sst-2-english — treinado
+   SOMENTE em inglês. Ele não entende Português corretamente.
+   
+   Solução: especificar um modelo multilíngue:
+   pipeline('sentiment-analysis',
+            model='lxyuan/distilbert-base-multilingual-cased-sentiments-student')
+
+
+P: O que é RAG e por que é melhor do que apenas usar o LLM?
+R: RAG (Retrieval-Augmented Generation) combina busca em
+   documentos com geração de texto:
+   
+   Sem RAG: o LLM só sabe o que aprendeu no treinamento.
+   → Pode inventar respostas (alucinação)
+   → Não conhece documentos privados da empresa
+   → Desatualizado após a data de corte do treino
+   
+   Com RAG: o LLM recebe o trecho correto como contexto.
+   → Responde com base em informação real
+   → Funciona com documentos internos e privados
+   → Sempre atualizado (basta atualizar o índice)
+
+
+P: O CLIP funciona em Português?
+R: O CLIP foi treinado principalmente em inglês. Com categorias
+   em inglês, funciona muito bem. Com categorias em Português,
+   funciona pior mas ainda pode funcionar para conceitos simples.
+   
+   Recomendação: sempre use categorias em inglês com o CLIP
+   e, se precisar de resultado em Português, traduza depois.
+
+
+------------------------------------------------------------------
+SEÇÃO 6 — DÚVIDAS SOBRE AVALIAÇÃO
+------------------------------------------------------------------
+
+P: Qual métrica usar para meu modelo de classificação de texto?
+R: Depende do dataset:
+   
+   Dataset balanceado (classes com tamanhos similares):
+   → Accuracy é suficiente
+   
+   Dataset desbalanceado (ex: 90% positivo, 10% negativo):
+   → Use F1-Score Macro (calcula F1 por classe e faz média)
+   → Accuracy pode ser enganosa!
+   
+   Problema de detecção (ex: detectar spam):
+   → Precision: queremos poucos falsos alarmes?
+   → Recall: queremos detectar todos os casos?
+   → F1: equilíbrio entre precisão e recall
+
+
+P: O BLEU Score de 25 é bom para tradução?
+R: Depende do par de idiomas e do domínio:
+   
+   BLEU < 10:  quase incompreensível
+   BLEU 10-19: compreensível mas com erros sérios
+   BLEU 20-29: aceitável para uso geral
+   BLEU 30-40: boa qualidade para a maioria dos usos
+   BLEU 40-50: alta qualidade, próximo a tradutores humanos
+   BLEU > 50:  qualidade profissional
+   
+   Para PT→EN ou EN→PT, um BLEU de 25-30 já é razoável.
+   Pares de idiomas com menos dados tendem a ter BLEU menor.
+
+
+------------------------------------------------------------------
+SEÇÃO 7 — DÚVIDAS TÉCNICAS E DE AMBIENTE
+------------------------------------------------------------------
+
+P: Por que o kernel reinicia ao carregar o DistilBERT?
+R: O DistilBERT ocupa ~260 MB de RAM ao ser carregado.
+   Em máquinas com pouca memória disponível, o Jupyter
+   reinicia o kernel automaticamente.
+   
+   Soluções:
+   → Feche outros programas para liberar RAM
+   → Use bert-tiny (~17 MB): model='prajjwal1/bert-tiny'
+   → Use Google Colab (RAM gratuita de 12 GB)
+   → Para a demonstração, use NumPy puro (sem modelo)
+
+
+P: Recebi o erro fbgemm.dll (WinError 182). O que faço?
+R: Esse erro ocorre quando o PyTorch foi instalado via conda
+   em vez de pip no Windows. Solução:
+   
+   conda activate pln-curso
+   pip uninstall torch torchvision -y
+   pip install torch==2.2.0 torchvision==0.17.0 \
+       --index-url https://download.pytorch.org/whl/cpu
+   
+   Se persistir: instalar o Visual C++ Redistributable em
+   https://aka.ms/vs/17/release/vc_relust.x64.exe
+   e reiniciar o computador.
+
+
+P: Posso usar esses modelos em português para produção?
+R: Sim! Verifique apenas:
+   → Licença do modelo no Hugging Face (maioria é Apache 2.0)
+   → Requisitos de hardware (CPU é suficiente para maioria)
+   → Tempo de resposta (DistilBERT: ~50ms por texto em CPU)
+   → Se precisar de escala, usar GPU ou API de inferência
+
+
+================================================================
+FIM DO FAQ
+================================================================
