@@ -1,0 +1,20 @@
+
+RELATÓRIO DE IMPLEMENTAÇÃO DE IA
+
+A equipe concluiu a implementação inicial do sistema de análise documental.
+
+Principais recursos:
+- Upload de múltiplos documentos
+- Busca semântica
+- Indexação vetorial com FAISS
+- Integração com LLM Groq
+- Utilização do modelo llama-3.3-70b-versatile
+
+Resultados observados:
+O sistema conseguiu localizar informações relevantes em contratos,
+planilhas financeiras e manuais técnicos.
+
+Próximas melhorias:
+- Implementar OCR
+- Adicionar memória conversacional
+- Persistir embeddings em banco vetorial
